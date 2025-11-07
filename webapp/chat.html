@@ -388,6 +388,7 @@
       setDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { showToast, calculateDistance } from './js/utils.js';
+    import { loadTheme } from './js/theme.js';
 
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -425,6 +426,9 @@
         const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (currentUserDoc.exists()) {
           currentUserData = { id: currentUserDoc.id, ...currentUserDoc.data() };
+
+          // Load user theme
+          loadTheme(currentUserData);
         }
 
         // Load other user

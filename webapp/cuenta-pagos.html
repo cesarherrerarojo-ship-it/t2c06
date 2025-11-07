@@ -317,6 +317,7 @@
     import { auth, db } from './js/firebase-config.js';
     import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { loadTheme } from './js/theme.js';
 
     let currentUser = null;
     let currentUserData = null;
@@ -340,6 +341,9 @@
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           currentUserData = { id: userDoc.id, ...userDoc.data() };
+
+          // Load user theme
+          loadTheme(currentUserData);
         }
       } catch (error) {
         console.error('Error loading user data:', error);
