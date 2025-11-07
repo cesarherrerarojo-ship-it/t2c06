@@ -87,6 +87,12 @@ The document ID is the user's Firebase Authentication UID.
   hiddenConversations: [string],    // Array of conversation IDs hidden by user
 
   // ========================================
+  // PERSONALIZATION
+  // ========================================
+
+  theme: string,                    // Color theme preference: "purple" | "blue" | "green" | "orange" | "teal" | "pink"
+
+  // ========================================
   // TIMESTAMPS
   // ========================================
 
@@ -228,6 +234,38 @@ const lookingForOptions = {
   - Don't appear in conversations list
   - Can be unhidden (not deleted)
   - Messages are preserved
+
+---
+
+## 🎨 Personalization
+
+### Theme Selection
+
+Users can personalize their experience by choosing a color theme that suits their style.
+
+**Available Themes:**
+
+| Theme Key | Name | Icon | Description |
+|-----------|------|------|-------------|
+| `purple` | Púrpura Pasión | 💜 | Default purple/pink gradient (original design) |
+| `blue` | Azul Océano | 💙 | Cool blue gradient (calming, professional) |
+| `green` | Verde Natura | 💚 | Natural green gradient (fresh, eco-friendly) |
+| `orange` | Naranja Solar | 🧡 | Warm orange/pink gradient (energetic, friendly) |
+| `teal` | Turquesa Tropical | 🩵 | Tropical teal gradient (modern, vibrant) |
+| `pink` | Rosa Romance | 🩷 | Romantic pink gradient (sweet, playful) |
+
+**How it works:**
+- Theme preference is saved in Firestore (`theme` field)
+- Theme is cached in localStorage for instant loading
+- Theme is applied across all pages automatically
+- Changes take effect immediately when selected
+- Default theme: `purple` (if not set)
+
+**Implementation:**
+- Themes are managed by `/webapp/js/theme.js`
+- Each theme defines: gradient, primary, secondary, accent colors
+- CSS custom properties are updated dynamically
+- Background gradients and UI elements adapt to selected theme
 
 ---
 

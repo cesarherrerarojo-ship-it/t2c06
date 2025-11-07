@@ -646,6 +646,7 @@
       limit
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { showToast, calculateAge, getReputationBadge, calculateDistance } from './js/utils.js';
+    import { loadTheme } from './js/theme.js';
 
     // DOM Elements
     const userGrid = document.getElementById('userGrid');
@@ -1073,6 +1074,9 @@
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           currentUserData = { id: docSnap.id, ...docSnap.data() };
+
+          // Load user theme
+          loadTheme(currentUserData);
 
           // Set user location if available
           if (currentUserData.location) {

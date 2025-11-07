@@ -309,6 +309,28 @@
       </div>
     </div>
 
+    <!-- Theme Selection -->
+    <div class="glass-strong rounded-2xl p-8 mb-6">
+      <h3 class="text-2xl font-bold mb-6 flex items-center gap-3">
+        <i class="fas fa-palette text-pink-400"></i>
+        Personalización
+      </h3>
+
+      <div class="space-y-4">
+        <label class="label">
+          <i class="fas fa-brush text-pink-400 mr-2"></i>
+          Tema de Color
+        </label>
+        <p class="text-sm text-slate-300 mb-4">
+          Elige el esquema de colores que más te guste para personalizar tu experiencia
+        </p>
+
+        <div id="themeSelector" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Theme options will be loaded here -->
+        </div>
+      </div>
+    </div>
+
     <!-- Save Button -->
     <div class="flex gap-4">
       <button
@@ -355,10 +377,12 @@
     import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import { showToast } from './js/utils.js';
+    import { themes, applyTheme, loadTheme, saveThemeToFirestore } from './js/theme.js';
 
     let currentUser = null;
     let currentUserData = null;
     let photoFile = null;
+    let selectedTheme = 'purple';
 
     // Auth State
     onAuthStateChanged(auth, async (user) => {
@@ -406,6 +430,10 @@
           document.getElementById('ageRangeMin').value = currentUserData.ageRangeMin || 18;
           document.getElementById('ageRangeMax').value = currentUserData.ageRangeMax || 99;
 
+          // Load and apply theme
+          selectedTheme = loadTheme(currentUserData);
+          initializeThemeSelector();
+
           // Update bio counter
           updateBioCounter();
         }
@@ -413,6 +441,45 @@
         console.error('Error loading profile:', error);
         showToast('Error al cargar el perfil', 'error');
       }
+    }
+
+    // Initialize theme selector
+    function initializeThemeSelector() {
+      const themeSelector = document.getElementById('themeSelector');
+      themeSelector.innerHTML = '';
+
+      Object.keys(themes).forEach(themeKey => {
+        const theme = themes[themeKey];
+        const isSelected = themeKey === selectedTheme;
+
+        const themeCard = document.createElement('button');
+        themeCard.type = 'button';
+        themeCard.className = `relative p-4 rounded-xl border-2 transition-all ${
+          isSelected
+            ? 'border-white shadow-lg scale-105'
+            : 'border-white/20 hover:border-white/50'
+        }`;
+        themeCard.style.background = theme.gradient;
+        themeCard.onclick = () => selectTheme(themeKey);
+
+        themeCard.innerHTML = `
+          <div class="text-center">
+            <div class="text-3xl mb-2">${theme.icon}</div>
+            <div class="font-semibold text-white text-sm">${theme.name}</div>
+          </div>
+          ${isSelected ? '<div class="absolute top-2 right-2"><i class="fas fa-check-circle text-white text-xl"></i></div>' : ''}
+        `;
+
+        themeSelector.appendChild(themeCard);
+      });
+    }
+
+    // Select theme
+    function selectTheme(themeKey) {
+      selectedTheme = themeKey;
+      applyTheme(themeKey);
+      initializeThemeSelector();
+      showToast('Tema aplicado. Guarda los cambios para conservarlo.', 'info');
     }
 
     // Bio counter
@@ -513,6 +580,7 @@
           ageRangeMin: parseInt(document.getElementById('ageRangeMin').value) || 18,
           ageRangeMax: parseInt(document.getElementById('ageRangeMax').value) || 99,
           photoURL: photoURL,
+          theme: selectedTheme,
           updatedAt: serverTimestamp()
         });
 
