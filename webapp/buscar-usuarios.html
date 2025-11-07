@@ -252,6 +252,11 @@
         <span class="font-bold text-xl">TuCitaSegura</span>
       </a>
       <div class="flex items-center gap-4">
+        <a href="/webapp/conversaciones.html" class="hover:text-blue-400 transition flex items-center gap-2 relative">
+          <i class="fas fa-comments"></i>
+          <span class="hidden md:inline">Mensajes</span>
+          <span id="unreadBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+        </a>
         <a href="/webapp/citas.html" class="hover:text-blue-400 transition flex items-center gap-2">
           <i class="fas fa-calendar-check"></i>
           <span class="hidden md:inline">Mis Citas</span>
@@ -1459,6 +1464,53 @@
       userModal.classList.remove('hidden');
     }
 
+    // Helper function to create conversation
+    async function createConversation(otherUserId, otherUserData) {
+      try {
+        // Check if conversation already exists
+        const convQuery = query(
+          collection(db, 'conversations'),
+          where('participants', 'array-contains', currentUser.uid)
+        );
+        const convSnapshot = await getDocs(convQuery);
+
+        let conversationExists = false;
+        convSnapshot.forEach((doc) => {
+          const participants = doc.data().participants;
+          if (participants.includes(otherUserId)) {
+            conversationExists = true;
+          }
+        });
+
+        // Only create if doesn't exist
+        if (!conversationExists) {
+          await addDoc(collection(db, 'conversations'), {
+            participants: [currentUser.uid, otherUserId],
+            participantsData: {
+              [currentUser.uid]: {
+                alias: currentUserData.alias || currentUser.email,
+                gender: currentUserData.gender,
+                unreadCount: 0
+              },
+              [otherUserId]: {
+                alias: otherUserData.alias || otherUserData.email,
+                gender: otherUserData.gender,
+                unreadCount: 0
+              }
+            },
+            lastMessage: '',
+            lastMessageTime: serverTimestamp(),
+            lastMessageSenderId: '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          console.log('Conversation created successfully');
+        }
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+      }
+    }
+
     async function quickMatch(user) {
       if (userMatches.includes(user.id)) {
         showToast('Ya enviaste solicitud a este usuario', 'warning');
@@ -1482,6 +1534,9 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+
+        // Create conversation automatically
+        await createConversation(user.id, user);
 
         userMatches.push(user.id);
         showToast('¡Solicitud enviada!', 'success');
@@ -1641,6 +1696,9 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+
+        // Create conversation automatically
+        await createConversation(selectedUser.id, selectedUser);
 
         userMatches.push(selectedUser.id);
         showToast('¡Solicitud enviada!', 'success');
