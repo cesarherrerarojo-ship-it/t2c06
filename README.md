@@ -15,6 +15,7 @@ Una aplicación moderna de búsqueda de usuarios para citas con **Google Maps in
 - 🔮 **Futuro:** Se implementarán pagos para ambos géneros
 
 📖 **Ver detalles completos:** [`BUSINESS_RULES.md`](./BUSINESS_RULES.md)
+💳 **Integración de pagos:** [`PAYPAL_INTEGRATION.md`](./PAYPAL_INTEGRATION.md)
 
 ---
 
@@ -140,6 +141,8 @@ Una aplicación moderna de búsqueda de usuarios para citas con **Google Maps in
 ```
 /webapp
 ├── buscar-usuarios.html    # Página principal mejorada
+├── suscripcion.html        # Página de suscripción PayPal (€29.99/mes)
+├── seguro.html             # Página de seguro anti-plantón PayPal (€120)
 └── /js
     ├── firebase-config.js  # Configuración de Firebase
     └── utils.js           # Funciones utilitarias
