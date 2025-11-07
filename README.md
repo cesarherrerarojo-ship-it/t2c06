@@ -2,6 +2,22 @@
 
 Una aplicación moderna de búsqueda de usuarios para citas con **Google Maps integrado**, filtros avanzados, diseño glassmorphism y experiencia de usuario excepcional.
 
+## 💰 Modelo de Negocio
+
+**IMPORTANTE:** TuCitaSegura implementa validaciones de pago para garantizar seriedad:
+
+### Usuarios Masculinos 🚹
+- ✅ **Membresía Premium** (€29.99/mes) - Requerida para enviar solicitudes y chatear
+- ✅ **Seguro Anti-Plantón** (€120 pago único) - Requerido para agendar citas
+
+### Usuarios Femeninos 🚺
+- ✅ **Acceso Gratis** (actualmente) - Sin restricciones
+- 🔮 **Futuro:** Se implementarán pagos para ambos géneros
+
+📖 **Ver detalles completos:** [`BUSINESS_RULES.md`](./BUSINESS_RULES.md)
+
+---
+
 ## 🎯 Mejoras Implementadas
 
 ### 1. **🗺️ Integración con Google Maps (NUEVO)**
@@ -190,17 +206,30 @@ La aplicación requiere las siguientes colecciones:
   bio: string,
   reputation: "BRONCE" | "PLATA" | "ORO" | "PLATINO",
   emailVerified: boolean,
-  hasActiveSubscription: boolean,
+
+  // 💰 CAMPOS DE PAGO (NUEVOS)
+  hasActiveSubscription: boolean,       // ¿Tiene membresía activa?
+  subscriptionId: string,               // ID de Stripe/PayPal
+  subscriptionStartDate: Timestamp,     // Inicio de membresía
+  subscriptionEndDate: Timestamp,       // Fin de membresía
+  subscriptionStatus: "active" | "canceled" | "expired",
+
+  hasAntiGhostingInsurance: boolean,    // ¿Tiene seguro anti-plantón?
+  insurancePaymentId: string,           // ID de transacción del seguro
+  insurancePurchaseDate: Timestamp,     // Cuándo compró el seguro
+  insuranceAmount: number,              // 120 (en euros)
+
   isOnline: boolean,
   createdAt: Timestamp,
   lastActivity: Timestamp
 }
 ```
 
-**Nota sobre `location`:** Este campo es necesario para la funcionalidad de mapas. Se puede obtener mediante:
-- Geolocalización del navegador
-- Geocodificación de la dirección del usuario
-- Selección manual en un mapa durante el registro
+**Notas importantes:**
+- **`location`:** Campo necesario para Google Maps. Se obtiene mediante geolocalización, geocodificación o selección manual.
+- **`hasActiveSubscription`:** `true` = puede enviar solicitudes y chatear (solo hombres deben pagar)
+- **`hasAntiGhostingInsurance`:** `true` = puede agendar citas confirmadas (solo hombres deben pagar)
+- **Regla de negocio:** Por ahora solo los hombres necesitan ambos pagos. Las mujeres tienen acceso gratis.
 
 #### `matches`
 ```javascript

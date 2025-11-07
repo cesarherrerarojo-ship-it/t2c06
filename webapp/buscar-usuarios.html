@@ -271,6 +271,11 @@
   <main class="pt-24 pb-12 px-4">
     <div class="max-w-7xl mx-auto">
 
+      <!-- Payment Status Banner -->
+      <div id="paymentStatusBanner" class="hidden rounded-2xl p-4 mb-6">
+        <!-- Will be populated dynamically -->
+      </div>
+
       <!-- Header Section with Stats -->
       <div class="glass-strong rounded-2xl p-6 mb-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -495,6 +500,33 @@
     </div>
   </main>
 
+  <!-- Payment Required Modal -->
+  <div id="paymentModal" class="hidden fixed inset-0 bg-black/80 modal-backdrop flex items-center justify-center z-[60] p-4">
+    <div class="glass-strong rounded-2xl max-w-md w-full modal-content">
+      <div class="p-8 text-center">
+        <div class="w-20 h-20 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-lock text-4xl text-white"></i>
+        </div>
+
+        <h3 id="paymentModalTitle" class="text-2xl font-bold mb-4">Membresía Requerida</h3>
+        <p id="paymentModalMessage" class="text-slate-300 mb-6"></p>
+
+        <div id="paymentDetails" class="glass rounded-xl p-6 mb-6 text-left">
+          <!-- Payment details will be inserted here -->
+        </div>
+
+        <div class="flex gap-3">
+          <button id="goToPaymentBtn" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-6 py-4 rounded-lg font-semibold text-lg">
+            <i class="fas fa-credit-card mr-2"></i><span id="paymentBtnText">Contratar Ahora</span>
+          </button>
+          <button id="closePaymentModal" class="bg-slate-700 hover:bg-slate-600 px-6 py-4 rounded-lg font-semibold">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- User Details Modal -->
   <div id="userModal" class="hidden fixed inset-0 bg-black/70 modal-backdrop flex items-center justify-center z-50 p-4">
     <div class="glass-strong rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-content">
@@ -636,6 +668,10 @@
     const mapContainer = document.getElementById('mapContainer');
     const gridContainer = document.getElementById('gridContainer');
     const useMyLocation = document.getElementById('useMyLocation');
+    const paymentModal = document.getElementById('paymentModal');
+    const closePaymentModal = document.getElementById('closePaymentModal');
+    const goToPaymentBtn = document.getElementById('goToPaymentBtn');
+    const paymentStatusBanner = document.getElementById('paymentStatusBanner');
 
     // State
     let currentUser = null;
@@ -857,6 +893,175 @@
       loadSavedFilters();
     });
 
+    // Payment Validation Functions
+    function checkPaymentStatus() {
+      // Regla de negocio: Por ahora solo los hombres pagan
+      const userMustPay = currentUserData.gender === 'masculino';
+
+      if (!userMustPay) {
+        // Las mujeres pueden usar libremente (por ahora)
+        return { canUse: true, reason: null };
+      }
+
+      // Verificar membresía activa
+      if (!currentUserData.hasActiveSubscription) {
+        return {
+          canUse: false,
+          reason: 'membership',
+          title: 'Membresía Requerida',
+          message: 'Para enviar solicitudes de cita necesitas una membresía activa.'
+        };
+      }
+
+      // Verificar seguro anti-plantón (120€)
+      if (!currentUserData.hasAntiGhostingInsurance) {
+        return {
+          canUse: false,
+          reason: 'insurance',
+          title: 'Seguro Anti-Plantón Requerido',
+          message: 'Para agendar citas debes contratar el seguro anti-plantón de 120€.'
+        };
+      }
+
+      return { canUse: true, reason: null };
+    }
+
+    function showPaymentRequiredModal(reason, title, message) {
+      const paymentModalTitle = document.getElementById('paymentModalTitle');
+      const paymentModalMessage = document.getElementById('paymentModalMessage');
+      const paymentDetails = document.getElementById('paymentDetails');
+      const paymentBtnText = document.getElementById('paymentBtnText');
+
+      paymentModalTitle.textContent = title;
+      paymentModalMessage.textContent = message;
+
+      if (reason === 'membership') {
+        paymentDetails.innerHTML = `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+              <span class="text-slate-400">Plan Mensual</span>
+              <span class="text-2xl font-bold text-green-400">€29.99/mes</span>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex items-start gap-2">
+                <i class="fas fa-check text-green-400 mt-1"></i>
+                <span>Envía solicitudes de cita ilimitadas</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-check text-green-400 mt-1"></i>
+                <span>Chat con todos tus matches</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-check text-green-400 mt-1"></i>
+                <span>Filtros avanzados de búsqueda</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-check text-green-400 mt-1"></i>
+                <span>Soporte prioritario</span>
+              </div>
+            </div>
+          </div>
+        `;
+        paymentBtnText.textContent = 'Contratar Membresía';
+        goToPaymentBtn.onclick = () => window.location.href = '/webapp/suscripcion.html';
+      } else if (reason === 'insurance') {
+        paymentDetails.innerHTML = `
+          <div class="space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+              <span class="text-slate-400">Pago Único</span>
+              <span class="text-2xl font-bold text-blue-400">€120</span>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex items-start gap-2">
+                <i class="fas fa-shield-check text-blue-400 mt-1"></i>
+                <span><strong>Protección anti-plantón:</strong> Si tu cita no se presenta, recuperas tu dinero</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-shield-check text-blue-400 mt-1"></i>
+                <span><strong>Verificación de identidad:</strong> Todas las citas están verificadas</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-shield-check text-blue-400 mt-1"></i>
+                <span><strong>Seguridad garantizada:</strong> Sistema de reputación y valoraciones</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <i class="fas fa-shield-check text-blue-400 mt-1"></i>
+                <span><strong>Reembolso automático:</strong> Si hay un plantón comprobado</span>
+              </div>
+            </div>
+            <div class="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 text-xs">
+              <i class="fas fa-info-circle text-yellow-400 mr-2"></i>
+              Este seguro es obligatorio para agendar citas y garantiza la seriedad de ambas partes.
+            </div>
+          </div>
+        `;
+        paymentBtnText.textContent = 'Contratar Seguro';
+        goToPaymentBtn.onclick = () => window.location.href = '/webapp/seguro.html';
+      }
+
+      paymentModal.classList.remove('hidden');
+    }
+
+    function updatePaymentStatusBanner() {
+      const userMustPay = currentUserData.gender === 'masculino';
+
+      if (!userMustPay) {
+        paymentStatusBanner.classList.add('hidden');
+        return;
+      }
+
+      const hasMembership = currentUserData.hasActiveSubscription;
+      const hasInsurance = currentUserData.hasAntiGhostingInsurance;
+
+      if (hasMembership && hasInsurance) {
+        // Todo pago OK - mostrar badge de estado premium
+        paymentStatusBanner.className = 'glass-strong rounded-2xl p-4 mb-6 border-2 border-green-500/50';
+        paymentStatusBanner.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fas fa-check-circle text-green-400 text-2xl"></i>
+              <div>
+                <h4 class="font-bold text-green-400">Cuenta Premium Activa</h4>
+                <p class="text-sm text-slate-300">Membresía y seguro anti-plantón activos</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge bg-green-500/20 border border-green-500/50 text-green-400">
+                <i class="fas fa-crown mr-1"></i>Premium
+              </span>
+              <span class="badge bg-blue-500/20 border border-blue-500/50 text-blue-400">
+                <i class="fas fa-shield-check mr-1"></i>Asegurado
+              </span>
+            </div>
+          </div>
+        `;
+        paymentStatusBanner.classList.remove('hidden');
+      } else {
+        // Falta algún pago - mostrar advertencia
+        paymentStatusBanner.className = 'glass-strong rounded-2xl p-4 mb-6 border-2 border-yellow-500/50 bg-yellow-500/10';
+
+        const missingItems = [];
+        if (!hasMembership) missingItems.push('Membresía mensual');
+        if (!hasInsurance) missingItems.push('Seguro anti-plantón (€120)');
+
+        paymentStatusBanner.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl"></i>
+              <div>
+                <h4 class="font-bold text-yellow-400">Pagos Pendientes</h4>
+                <p class="text-sm text-slate-300">Falta: ${missingItems.join(' y ')}</p>
+              </div>
+            </div>
+            <button onclick="document.getElementById('paymentModal').classList.remove('hidden')" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-semibold text-black">
+              <i class="fas fa-credit-card mr-2"></i>Completar Pagos
+            </button>
+          </div>
+        `;
+        paymentStatusBanner.classList.remove('hidden');
+      }
+    }
+
     async function loadCurrentUserData() {
       try {
         const docRef = doc(db, 'users', currentUser.uid);
@@ -868,6 +1073,9 @@
           if (currentUserData.location) {
             userLocation = currentUserData.location;
           }
+
+          // Update payment status banner
+          updatePaymentStatusBanner();
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -1257,13 +1465,14 @@
         return;
       }
 
-      try {
-        if (!currentUserData?.hasActiveSubscription) {
-          showToast('Necesitas una suscripción activa', 'warning');
-          setTimeout(() => window.location.href = '/webapp/suscripcion.html', 2000);
-          return;
-        }
+      // ✅ VALIDACIÓN DE PAGOS
+      const paymentStatus = checkPaymentStatus();
+      if (!paymentStatus.canUse) {
+        showPaymentRequiredModal(paymentStatus.reason, paymentStatus.title, paymentStatus.message);
+        return;
+      }
 
+      try {
         await addDoc(collection(db, 'matches'), {
           senderId: currentUser.uid,
           senderName: currentUserData.alias || currentUser.email,
@@ -1411,16 +1620,18 @@
     sendMatchBtn.addEventListener('click', async () => {
       if (!selectedUser || userMatches.includes(selectedUser.id)) return;
 
+      // ✅ VALIDACIÓN DE PAGOS
+      const paymentStatus = checkPaymentStatus();
+      if (!paymentStatus.canUse) {
+        userModal.classList.add('hidden'); // Cerrar modal de usuario
+        showPaymentRequiredModal(paymentStatus.reason, paymentStatus.title, paymentStatus.message);
+        return;
+      }
+
       sendMatchBtn.disabled = true;
       sendMatchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
 
       try {
-        if (!currentUserData?.hasActiveSubscription) {
-          showToast('Necesitas una suscripción activa', 'warning');
-          setTimeout(() => window.location.href = '/webapp/suscripcion.html', 2000);
-          return;
-        }
-
         await addDoc(collection(db, 'matches'), {
           senderId: currentUser.uid,
           senderName: currentUserData.alias || currentUser.email,
@@ -1461,6 +1672,17 @@
     userModal.addEventListener('click', (e) => {
       if (e.target === userModal) {
         userModal.classList.add('hidden');
+      }
+    });
+
+    // Payment Modal event listeners
+    closePaymentModal.addEventListener('click', () => {
+      paymentModal.classList.add('hidden');
+    });
+
+    paymentModal.addEventListener('click', (e) => {
+      if (e.target === paymentModal) {
+        paymentModal.classList.add('hidden');
       }
     });
   </script>
