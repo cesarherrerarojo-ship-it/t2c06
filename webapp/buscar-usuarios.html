@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Google Maps API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -188,6 +190,56 @@
       from { opacity: 0; transform: translateY(50px) scale(0.9); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+
+    /* Google Maps Styles */
+    #map {
+      width: 100%;
+      height: 600px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    #userModalMap {
+      width: 100%;
+      height: 300px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .map-info-window {
+      font-family: 'Inter', sans-serif;
+      max-width: 200px;
+    }
+
+    .view-toggle {
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .view-toggle button {
+      padding: 10px 20px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .view-toggle button.active {
+      background: rgba(14, 165, 233, 0.5);
+    }
+
+    .distance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      color: #86efac;
+    }
   </style>
 </head>
 <body class="text-white min-h-screen">
@@ -233,10 +285,22 @@
             </p>
           </div>
           <div class="flex items-center gap-3">
+            <!-- View Toggle -->
+            <div class="view-toggle glass flex">
+              <button id="viewList" class="active flex items-center gap-2">
+                <i class="fas fa-th-large"></i>
+                <span class="hidden sm:inline">Lista</span>
+              </button>
+              <button id="viewMap" class="flex items-center gap-2">
+                <i class="fas fa-map-marked-alt"></i>
+                <span class="hidden sm:inline">Mapa</span>
+              </button>
+            </div>
             <button id="toggleFilters" class="glass px-4 py-2 rounded-lg hover:bg-white/10 transition">
               <i class="fas fa-sliders mr-2"></i>Filtros
             </button>
             <select id="sortBy" class="glass px-4 py-2 rounded-lg border-0 cursor-pointer hover:bg-white/10 transition">
+              <option value="distance">Más cercanos</option>
               <option value="newest">Más recientes</option>
               <option value="age-asc">Edad: menor a mayor</option>
               <option value="age-desc">Edad: mayor a menor</option>
@@ -275,6 +339,31 @@
               placeholder="Escribe para buscar...">
           </div>
 
+          <!-- Location Search with Autocomplete -->
+          <div class="lg:col-span-2">
+            <label class="block mb-2 text-sm font-semibold">
+              <i class="fas fa-map-marker-alt mr-2"></i>Ubicación
+            </label>
+            <input type="text" id="locationSearch"
+              class="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3"
+              placeholder="Buscar ciudad o dirección...">
+          </div>
+
+          <!-- Distance Filter -->
+          <div>
+            <label class="block mb-2 text-sm font-semibold">
+              <i class="fas fa-route mr-2"></i>Radio de búsqueda
+            </label>
+            <select id="filterDistance" class="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3 cursor-pointer">
+              <option value="">Cualquier distancia</option>
+              <option value="5">5 km o menos</option>
+              <option value="10">10 km o menos</option>
+              <option value="25">25 km o menos</option>
+              <option value="50">50 km o menos</option>
+              <option value="100">100 km o menos</option>
+            </select>
+          </div>
+
           <!-- Age Range -->
           <div>
             <label class="block mb-2 text-sm font-semibold">
@@ -292,16 +381,6 @@
             <input type="number" id="filterAgeMax" min="18" max="100"
               class="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3"
               placeholder="100">
-          </div>
-
-          <!-- City Filter -->
-          <div>
-            <label class="block mb-2 text-sm font-semibold">
-              <i class="fas fa-map-marker-alt mr-2"></i>Ciudad
-            </label>
-            <input type="text" id="filterCity"
-              class="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3"
-              placeholder="Cualquier ciudad">
           </div>
 
           <!-- Reputation Filter -->
@@ -337,6 +416,14 @@
               </span>
             </label>
           </div>
+
+          <!-- Use My Location -->
+          <div class="flex items-center">
+            <button id="useMyLocation" class="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold text-sm">
+              <i class="fas fa-crosshairs"></i>
+              Usar mi ubicación
+            </button>
+          </div>
         </div>
 
         <div class="mt-6 pt-4 border-t border-slate-600/50">
@@ -356,9 +443,25 @@
         </div>
       </div>
 
+      <!-- Map View -->
+      <div id="mapContainer" class="glass rounded-2xl p-6 mb-8 hidden">
+        <div class="mb-4">
+          <h2 class="text-xl font-bold">
+            <i class="fas fa-map-marked-alt mr-2 text-blue-400"></i>
+            Usuarios Cercanos
+          </h2>
+          <p class="text-sm text-slate-400 mt-1">
+            Haz clic en los marcadores para ver perfiles
+          </p>
+        </div>
+        <div id="map"></div>
+      </div>
+
       <!-- User Grid -->
-      <div id="userGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Users will be loaded here -->
+      <div id="gridContainer">
+        <div id="userGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Users will be loaded here -->
+        </div>
       </div>
 
       <!-- Loading Skeleton -->
@@ -409,7 +512,6 @@
         <!-- User Avatar and Basic Info -->
         <div class="flex items-start gap-6 mb-6">
           <div id="modalAvatar" class="w-24 h-24 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center text-4xl font-bold flex-shrink-0 relative">
-            <!-- Avatar letter will be inserted here -->
             <span id="modalOnlineIndicator" class="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-slate-800 rounded-full hidden"></span>
           </div>
           <div class="flex-1">
@@ -422,16 +524,22 @@
                 <i class="fas fa-birthday-cake"></i>
                 <span></span>
               </span>
-              <span id="modalCity" class="badge bg-slate-700 hidden">
-                <i class="fas fa-map-marker-alt"></i>
+              <span id="modalDistance" class="distance-badge hidden">
+                <i class="fas fa-route"></i>
                 <span></span>
               </span>
-              <span id="modalReputation" class="badge">
-                <!-- Reputation badge will be inserted here -->
-              </span>
+              <span id="modalReputation" class="badge"></span>
             </div>
             <p id="modalLastSeen" class="text-sm text-slate-400"></p>
           </div>
+        </div>
+
+        <!-- Map in Modal -->
+        <div id="modalMapContainer" class="mb-6 hidden">
+          <h4 class="font-semibold mb-2 text-lg">
+            <i class="fas fa-map-marker-alt mr-2 text-blue-400"></i>Ubicación
+          </h4>
+          <div id="userModalMap"></div>
         </div>
 
         <!-- Bio Section -->
@@ -463,9 +571,7 @@
           <h4 class="font-semibold mb-3 text-lg">
             <i class="fas fa-heart mr-2 text-pink-400"></i>Intereses
           </h4>
-          <div id="modalInterests" class="flex flex-wrap gap-2">
-            <!-- Interest tags will be inserted here -->
-          </div>
+          <div id="modalInterests" class="flex flex-wrap gap-2"></div>
         </div>
 
         <!-- Match Status -->
@@ -502,7 +608,7 @@
       orderBy,
       limit
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { showToast, calculateAge, getReputationBadge } from './js/utils.js';
+    import { showToast, calculateAge, getReputationBadge, calculateDistance } from './js/utils.js';
 
     // DOM Elements
     const userGrid = document.getElementById('userGrid');
@@ -525,6 +631,11 @@
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const activeFilters = document.getElementById('activeFilters');
     const filterChips = document.getElementById('filterChips');
+    const viewList = document.getElementById('viewList');
+    const viewMap = document.getElementById('viewMap');
+    const mapContainer = document.getElementById('mapContainer');
+    const gridContainer = document.getElementById('gridContainer');
+    const useMyLocation = document.getElementById('useMyLocation');
 
     // State
     let currentUser = null;
@@ -535,7 +646,195 @@
     let displayedUsers = [];
     let userMatches = [];
     let currentPage = 0;
+    let map = null;
+    let markers = [];
+    let userLocation = null;
+    let autocomplete = null;
+    let currentView = 'list';
     const USERS_PER_PAGE = 12;
+
+    // Initialize Google Maps
+    function initMap() {
+      const mapOptions = {
+        zoom: 12,
+        center: { lat: 40.4168, lng: -3.7038 }, // Madrid default
+        styles: [
+          {
+            "featureType": "all",
+            "elementType": "geometry",
+            "stylers": [{"color": "#242f3e"}]
+          },
+          {
+            "featureType": "all",
+            "elementType": "labels.text.stroke",
+            "stylers": [{"lightness": -80}]
+          },
+          {
+            "featureType": "administrative",
+            "elementType": "labels.text.fill",
+            "stylers": [{"color": "#746855"}]
+          },
+          {
+            "featureType": "poi",
+            "elementType": "labels.text.fill",
+            "stylers": [{"color": "#d59563"}]
+          },
+          {
+            "featureType": "water",
+            "elementType": "geometry",
+            "stylers": [{"color": "#17263c"}]
+          }
+        ]
+      };
+
+      map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+      // Initialize autocomplete
+      const locationInput = document.getElementById('locationSearch');
+      autocomplete = new google.maps.places.Autocomplete(locationInput, {
+        types: ['(cities)'],
+        componentRestrictions: { country: 'es' }
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry) {
+          userLocation = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          };
+          map.setCenter(userLocation);
+          map.setZoom(12);
+          applyFiltersAndSort();
+        }
+      });
+    }
+
+    // Add user markers to map
+    function addMarkersToMap(users) {
+      // Clear existing markers
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
+
+      if (!map) return;
+
+      users.forEach(user => {
+        if (user.location && user.location.lat && user.location.lng) {
+          const marker = new google.maps.Marker({
+            position: { lat: user.location.lat, lng: user.location.lng },
+            map: map,
+            title: user.alias || 'Usuario',
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="18" fill="#0ea5e9" stroke="#fff" stroke-width="3"/>
+                  <text x="20" y="26" font-size="16" font-weight="bold" text-anchor="middle" fill="#fff">
+                    ${(user.alias || 'U').charAt(0).toUpperCase()}
+                  </text>
+                </svg>
+              `),
+              scaledSize: new google.maps.Size(40, 40),
+              anchor: new google.maps.Point(20, 20)
+            }
+          });
+
+          const reputation = getReputationBadge(user.reputation || 'BRONCE');
+          const distance = userLocation && user.location ?
+            calculateDistance(userLocation.lat, userLocation.lng, user.location.lat, user.location.lng) : null;
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <div class="map-info-window">
+                <h3 style="font-weight: bold; margin-bottom: 8px;">${user.alias || 'Usuario'}</h3>
+                <p style="font-size: 0.875rem; margin-bottom: 4px;">
+                  <i class="fas fa-birthday-cake"></i> ${user.age} años
+                </p>
+                ${distance ? `<p style="font-size: 0.875rem; margin-bottom: 8px; color: #86efac;">
+                  <i class="fas fa-route"></i> ${distance.toFixed(1)} km
+                </p>` : ''}
+                <p style="font-size: 0.875rem; margin-bottom: 8px;">${reputation.icon} ${reputation.label}</p>
+                <button onclick="window.openUserModalFromMap('${user.id}')"
+                  style="background: linear-gradient(to right, #ec4899, #a855f7); color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; width: 100%;">
+                  Ver Perfil
+                </button>
+              </div>
+            `
+          });
+
+          marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+          });
+
+          markers.push(marker);
+        }
+      });
+
+      // Fit bounds to show all markers
+      if (markers.length > 0) {
+        const bounds = new google.maps.LatLngBounds();
+        markers.forEach(marker => bounds.extend(marker.getPosition()));
+        map.fitBounds(bounds);
+      }
+    }
+
+    // Make openUserModalFromMap available globally
+    window.openUserModalFromMap = function(userId) {
+      const user = allUsers.find(u => u.id === userId);
+      if (user) {
+        openUserModal(user);
+      }
+    };
+
+    // Get user's current location
+    useMyLocation.addEventListener('click', () => {
+      if (navigator.geolocation) {
+        useMyLocation.disabled = true;
+        useMyLocation.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Obteniendo...';
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            userLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+
+            if (map) {
+              map.setCenter(userLocation);
+              map.setZoom(14);
+
+              // Add marker for user location
+              new google.maps.Marker({
+                position: userLocation,
+                map: map,
+                icon: {
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                      <circle cx="20" cy="20" r="18" fill="#22c55e" stroke="#fff" stroke-width="3"/>
+                      <circle cx="20" cy="20" r="8" fill="#fff"/>
+                    </svg>
+                  `),
+                  scaledSize: new google.maps.Size(40, 40)
+                },
+                title: 'Tu ubicación'
+              });
+            }
+
+            showToast('Ubicación detectada', 'success');
+            applyFiltersAndSort();
+            useMyLocation.disabled = false;
+            useMyLocation.innerHTML = '<i class="fas fa-check mr-2"></i>Ubicación detectada';
+          },
+          (error) => {
+            console.error('Error getting location:', error);
+            showToast('No se pudo obtener tu ubicación', 'error');
+            useMyLocation.disabled = false;
+            useMyLocation.innerHTML = '<i class="fas fa-crosshairs mr-2"></i>Usar mi ubicación';
+          }
+        );
+      } else {
+        showToast('Geolocalización no soportada', 'error');
+      }
+    });
 
     // Auth Check
     onAuthStateChanged(auth, async (user) => {
@@ -553,6 +852,7 @@
       currentUser = user;
       await loadCurrentUserData();
       await loadUserMatches();
+      initMap();
       await loadUsers();
       loadSavedFilters();
     });
@@ -563,6 +863,11 @@
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           currentUserData = { id: docSnap.id, ...docSnap.data() };
+
+          // Set user location if available
+          if (currentUserData.location) {
+            userLocation = currentUserData.location;
+          }
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -585,8 +890,6 @@
 
       try {
         const usersRef = collection(db, 'users');
-
-        // Filter by opposite gender only
         const oppositeGender = currentUserData.gender === 'masculino' ? 'femenino' : 'masculino';
         const q = query(usersRef, where('gender', '==', oppositeGender));
 
@@ -597,6 +900,15 @@
           if (doc.id !== currentUser.uid) {
             const data = doc.data();
             const age = data.birthDate ? calculateAge(data.birthDate) : null;
+
+            // Add mock location if not present (for demo purposes)
+            if (!data.location) {
+              data.location = {
+                lat: 40.4168 + (Math.random() - 0.5) * 0.2,
+                lng: -3.7038 + (Math.random() - 0.5) * 0.2
+              };
+            }
+
             allUsers.push({ id: doc.id, ...data, age });
           }
         });
@@ -612,9 +924,8 @@
     function applyFiltersAndSort() {
       const filters = getFilters();
 
-      // Apply filters
       filteredUsers = allUsers.filter(user => {
-        // Search text filter
+        // Search text
         if (filters.searchText) {
           const searchLower = filters.searchText.toLowerCase();
           const matchesAlias = user.alias?.toLowerCase().includes(searchLower);
@@ -626,8 +937,14 @@
         if (filters.ageMin && (!user.age || user.age < filters.ageMin)) return false;
         if (filters.ageMax && (!user.age || user.age > filters.ageMax)) return false;
 
-        // City filter
-        if (filters.city && (!user.city || !user.city.toLowerCase().includes(filters.city.toLowerCase()))) return false;
+        // Distance filter
+        if (filters.distance && userLocation && user.location) {
+          const dist = calculateDistance(
+            userLocation.lat, userLocation.lng,
+            user.location.lat, user.location.lng
+          );
+          if (dist > filters.distance) return false;
+        }
 
         // Reputation filter
         if (filters.reputation) {
@@ -640,15 +957,29 @@
         // Verified filter
         if (filters.verified && !user.emailVerified) return false;
 
-        // Online filter (mock implementation - would need real-time presence)
+        // Online filter
         if (filters.online && !user.isOnline) return false;
 
         return true;
       });
 
+      // Calculate distances for all filtered users
+      if (userLocation) {
+        filteredUsers.forEach(user => {
+          if (user.location) {
+            user.distance = calculateDistance(
+              userLocation.lat, userLocation.lng,
+              user.location.lat, user.location.lng
+            );
+          }
+        });
+      }
+
       // Apply sorting
       const sort = filters.sortBy;
-      if (sort === 'age-asc') {
+      if (sort === 'distance' && userLocation) {
+        filteredUsers.sort((a, b) => (a.distance || 999999) - (b.distance || 999999));
+      } else if (sort === 'age-asc') {
         filteredUsers.sort((a, b) => (a.age || 999) - (b.age || 999));
       } else if (sort === 'age-desc') {
         filteredUsers.sort((a, b) => (b.age || 0) - (a.age || 0));
@@ -656,7 +987,6 @@
         const repLevels = { 'BRONCE': 1, 'PLATA': 2, 'ORO': 3, 'PLATINO': 4 };
         filteredUsers.sort((a, b) => repLevels[b.reputation || 'BRONCE'] - repLevels[a.reputation || 'BRONCE']);
       } else {
-        // newest - sort by creation date if available
         filteredUsers.sort((a, b) => {
           const dateA = a.createdAt?.toMillis?.() || 0;
           const dateB = b.createdAt?.toMillis?.() || 0;
@@ -664,13 +994,17 @@
         });
       }
 
-      // Reset pagination
       currentPage = 0;
       displayedUsers = [];
 
-      // Display results
       updateFilterChips(filters);
-      displayUsers();
+
+      if (currentView === 'map') {
+        addMarkersToMap(filteredUsers);
+      } else {
+        displayUsers();
+      }
+
       updateUserCount();
       hideLoading();
     }
@@ -680,7 +1014,7 @@
         searchText: document.getElementById('searchText').value.trim(),
         ageMin: parseInt(document.getElementById('filterAgeMin').value) || null,
         ageMax: parseInt(document.getElementById('filterAgeMax').value) || null,
-        city: document.getElementById('filterCity').value.trim(),
+        distance: parseInt(document.getElementById('filterDistance').value) || null,
         reputation: document.getElementById('filterReputation').value,
         verified: document.getElementById('filterVerified').checked,
         online: document.getElementById('filterOnline').checked,
@@ -694,7 +1028,7 @@
       if (filters.searchText) chips.push({ text: `"${filters.searchText}"`, icon: 'search' });
       if (filters.ageMin) chips.push({ text: `Edad ≥ ${filters.ageMin}`, icon: 'birthday-cake' });
       if (filters.ageMax) chips.push({ text: `Edad ≤ ${filters.ageMax}`, icon: 'birthday-cake' });
-      if (filters.city) chips.push({ text: filters.city, icon: 'map-marker-alt' });
+      if (filters.distance) chips.push({ text: `≤ ${filters.distance} km`, icon: 'route' });
       if (filters.reputation) chips.push({ text: `${filters.reputation}+`, icon: 'star' });
       if (filters.verified) chips.push({ text: 'Verificados', icon: 'certificate' });
       if (filters.online) chips.push({ text: 'En línea', icon: 'circle' });
@@ -736,7 +1070,6 @@
         userGrid.insertAdjacentHTML('beforeend', card);
       });
 
-      // Show/hide load more button
       if (endIdx < filteredUsers.length) {
         loadMoreContainer.classList.remove('hidden');
       } else {
@@ -751,6 +1084,7 @@
       const avatarLetter = (user.alias || user.email || 'U').charAt(0).toUpperCase();
       const hasMatched = userMatches.includes(user.id);
       const isOnline = user.isOnline || false;
+      const distance = user.distance ? `<span class="distance-badge"><i class="fas fa-route"></i>${user.distance.toFixed(1)} km</span>` : '';
 
       return `
         <div class="user-card glass rounded-2xl p-6 cursor-pointer" data-user-id="${user.id}">
@@ -771,7 +1105,7 @@
                   <i class="fas fa-birthday-cake"></i>
                   ${user.age} años
                 </span>
-                ${user.city ? `<span class="badge bg-slate-700/50 text-xs"><i class="fas fa-map-marker-alt"></i>${user.city}</span>` : ''}
+                ${distance}
               </div>
               <span class="${reputation.color} badge text-xs">
                 ${reputation.icon} ${reputation.label}
@@ -802,7 +1136,6 @@
         const userId = card.dataset.userId;
         const user = displayedUsers.find(u => u.id === userId);
 
-        // View profile button
         const viewBtn = card.querySelector('.view-profile-btn');
         if (viewBtn) {
           viewBtn.addEventListener('click', (e) => {
@@ -811,7 +1144,6 @@
           });
         }
 
-        // Quick match button
         const quickMatchBtn = card.querySelector('.quick-match-btn');
         if (quickMatchBtn) {
           quickMatchBtn.addEventListener('click', (e) => {
@@ -828,23 +1160,22 @@
       const reputation = getReputationBadge(user.reputation || 'BRONCE');
       const hasMatched = userMatches.includes(user.id);
 
-      // Set avatar
       document.getElementById('modalAvatar').innerHTML = `
         ${avatarLetter}
         ${user.isOnline ? '<span id="modalOnlineIndicator" class="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-slate-800 rounded-full"></span>' : ''}
       `;
 
-      // Set basic info
       document.getElementById('modalName').textContent = user.alias || 'Usuario';
       document.getElementById('modalVerifiedBadge').classList.toggle('hidden', !user.emailVerified);
       document.getElementById('modalAge').querySelector('span').textContent = `${user.age} años`;
 
-      // City
-      if (user.city) {
-        document.getElementById('modalCity').classList.remove('hidden');
-        document.getElementById('modalCity').querySelector('span').textContent = user.city;
+      // Distance
+      if (user.distance) {
+        const distanceEl = document.getElementById('modalDistance');
+        distanceEl.classList.remove('hidden');
+        distanceEl.querySelector('span').textContent = `${user.distance.toFixed(1)} km`;
       } else {
-        document.getElementById('modalCity').classList.add('hidden');
+        document.getElementById('modalDistance').classList.add('hidden');
       }
 
       // Reputation
@@ -853,18 +1184,48 @@
       repBadge.innerHTML = `${reputation.icon} ${reputation.label}`;
 
       // Last seen
-      const lastSeen = user.isOnline ? 'En línea ahora' : 'Última vez hace 2 horas'; // Mock
+      const lastSeen = user.isOnline ? 'En línea ahora' : 'Última vez hace 2 horas';
       document.getElementById('modalLastSeen').textContent = lastSeen;
 
       // Bio
       document.getElementById('modalBio').textContent = user.bio || 'Este usuario no ha agregado una descripción todavía.';
 
-      // Stats (mock data)
+      // Stats
       document.getElementById('modalCitasCompletadas').textContent = Math.floor(Math.random() * 20) + 5;
       document.getElementById('modalCompatibilidad').textContent = `${Math.floor(Math.random() * 30) + 70}%`;
       document.getElementById('modalRespuesta').textContent = `${Math.floor(Math.random() * 30) + 65}%`;
 
-      // Interests (mock)
+      // Map in modal
+      if (user.location) {
+        document.getElementById('modalMapContainer').classList.remove('hidden');
+        setTimeout(() => {
+          const modalMap = new google.maps.Map(document.getElementById('userModalMap'), {
+            zoom: 14,
+            center: { lat: user.location.lat, lng: user.location.lng },
+            styles: map.get('styles')
+          });
+
+          new google.maps.Marker({
+            position: { lat: user.location.lat, lng: user.location.lng },
+            map: modalMap,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="18" fill="#0ea5e9" stroke="#fff" stroke-width="3"/>
+                  <text x="20" y="26" font-size="16" font-weight="bold" text-anchor="middle" fill="#fff">
+                    ${avatarLetter}
+                  </text>
+                </svg>
+              `),
+              scaledSize: new google.maps.Size(40, 40)
+            }
+          });
+        }, 100);
+      } else {
+        document.getElementById('modalMapContainer').classList.add('hidden');
+      }
+
+      // Interests
       const interests = ['Música', 'Viajes', 'Deportes', 'Cine', 'Lectura'];
       const userInterests = interests.slice(0, Math.floor(Math.random() * 3) + 2);
       if (userInterests.length > 0) {
@@ -876,7 +1237,6 @@
         document.getElementById('modalInterestsSection').classList.add('hidden');
       }
 
-      // Match status
       document.getElementById('alreadyMatchedMsg').classList.toggle('hidden', !hasMatched);
       sendMatchBtn.disabled = hasMatched;
 
@@ -917,7 +1277,6 @@
         userMatches.push(user.id);
         showToast('¡Solicitud enviada!', 'success');
 
-        // Refresh the card
         const card = document.querySelector(`[data-user-id="${user.id}"]`);
         if (card) {
           card.outerHTML = createUserCard(user);
@@ -955,7 +1314,7 @@
           const filters = JSON.parse(saved);
           if (filters.ageMin) document.getElementById('filterAgeMin').value = filters.ageMin;
           if (filters.ageMax) document.getElementById('filterAgeMax').value = filters.ageMax;
-          if (filters.city) document.getElementById('filterCity').value = filters.city;
+          if (filters.distance) document.getElementById('filterDistance').value = filters.distance;
           if (filters.reputation) document.getElementById('filterReputation').value = filters.reputation;
           if (filters.verified) document.getElementById('filterVerified').checked = filters.verified;
           if (filters.online) document.getElementById('filterOnline').checked = filters.online;
@@ -965,6 +1324,30 @@
         console.error('Error loading saved filters:', error);
       }
     }
+
+    // View Toggle
+    viewList.addEventListener('click', () => {
+      currentView = 'list';
+      viewList.classList.add('active');
+      viewMap.classList.remove('active');
+      mapContainer.classList.add('hidden');
+      gridContainer.classList.remove('hidden');
+      loadMoreContainer.classList.remove('hidden');
+    });
+
+    viewMap.addEventListener('click', () => {
+      currentView = 'map';
+      viewMap.classList.add('active');
+      viewList.classList.remove('active');
+      gridContainer.classList.add('hidden');
+      loadMoreContainer.classList.add('hidden');
+      mapContainer.classList.remove('hidden');
+
+      if (map) {
+        google.maps.event.trigger(map, 'resize');
+        addMarkersToMap(filteredUsers);
+      }
+    });
 
     // Event Listeners
     toggleFilters.addEventListener('click', () => {
@@ -979,41 +1362,24 @@
 
     clearFilters.addEventListener('click', () => {
       document.getElementById('searchText').value = '';
+      document.getElementById('locationSearch').value = '';
       document.getElementById('filterAgeMin').value = '';
       document.getElementById('filterAgeMax').value = '';
-      document.getElementById('filterCity').value = '';
+      document.getElementById('filterDistance').value = '';
       document.getElementById('filterReputation').value = '';
       document.getElementById('filterVerified').checked = false;
       document.getElementById('filterOnline').checked = false;
-      sortBy.value = 'newest';
+      sortBy.value = 'distance';
       localStorage.removeItem('userSearchFilters');
       applyFiltersAndSort();
     });
 
     clearAllFilters.addEventListener('click', () => {
-      document.getElementById('searchText').value = '';
-      document.getElementById('filterAgeMin').value = '';
-      document.getElementById('filterAgeMax').value = '';
-      document.getElementById('filterCity').value = '';
-      document.getElementById('filterReputation').value = '';
-      document.getElementById('filterVerified').checked = false;
-      document.getElementById('filterOnline').checked = false;
-      sortBy.value = 'newest';
-      localStorage.removeItem('userSearchFilters');
-      applyFiltersAndSort();
+      clearFilters.click();
     });
 
     resetSearch.addEventListener('click', () => {
-      document.getElementById('searchText').value = '';
-      document.getElementById('filterAgeMin').value = '';
-      document.getElementById('filterAgeMax').value = '';
-      document.getElementById('filterCity').value = '';
-      document.getElementById('filterReputation').value = '';
-      document.getElementById('filterVerified').checked = false;
-      document.getElementById('filterOnline').checked = false;
-      sortBy.value = 'newest';
-      localStorage.removeItem('userSearchFilters');
-      applyFiltersAndSort();
+      clearFilters.click();
     });
 
     sortBy.addEventListener('change', () => {
@@ -1021,7 +1387,6 @@
       applyFiltersAndSort();
     });
 
-    // Real-time search
     let searchTimeout;
     document.getElementById('searchText').addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
@@ -1070,7 +1435,6 @@
         showToast('¡Solicitud enviada!', 'success');
         userModal.classList.add('hidden');
 
-        // Refresh the card
         const card = document.querySelector(`[data-user-id="${selectedUser.id}"]`);
         if (card) {
           card.outerHTML = createUserCard(selectedUser);
@@ -1094,7 +1458,6 @@
       }
     });
 
-    // Close modal on outside click
     userModal.addEventListener('click', (e) => {
       if (e.target === userModal) {
         userModal.classList.add('hidden');

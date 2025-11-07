@@ -1,30 +1,47 @@
-# TuCitaSegura - User Search Page 🔍
+# TuCitaSegura - User Search Page 🔍🗺️
 
-Una aplicación moderna de búsqueda de usuarios para citas con filtros avanzados, diseño glassmorphism y experiencia de usuario excepcional.
+Una aplicación moderna de búsqueda de usuarios para citas con **Google Maps integrado**, filtros avanzados, diseño glassmorphism y experiencia de usuario excepcional.
 
 ## 🎯 Mejoras Implementadas
 
-### 1. **Búsqueda Avanzada**
+### 1. **🗺️ Integración con Google Maps (NUEVO)**
+- ✅ Vista de mapa interactivo con usuarios cercanos
+- ✅ Marcadores personalizados con inicial del usuario
+- ✅ Toggle entre vista de lista y vista de mapa
+- ✅ Autocomplete de lugares de Google
+- ✅ Geolocalización del usuario ("Usar mi ubicación")
+- ✅ Cálculo de distancias con fórmula de Haversine
+- ✅ Filtro por radio de búsqueda (5km - 100km)
+- ✅ Ordenamiento por distancia
+- ✅ Mapa en el modal de perfil de usuario
+- ✅ Info windows con perfil mini en marcadores
+- ✅ Dark mode styling para el mapa
+- ✅ Auto-ajuste de zoom para mostrar todos los usuarios
+
+### 2. **Búsqueda Avanzada**
 - ✅ Búsqueda en tiempo real por alias o biografía
 - ✅ Debounce de 500ms para optimizar rendimiento
 - ✅ Resaltado visual de filtros activos
 - ✅ Chips de filtros con opción de eliminar individualmente
+- ✅ Búsqueda por ubicación con autocomplete
 
-### 2. **Filtros Completos**
+### 3. **Filtros Completos**
 - ✅ **Edad**: Rango mínimo y máximo
-- ✅ **Ciudad**: Búsqueda por ubicación
+- ✅ **Ubicación**: Búsqueda por ciudad o dirección con Google Places
+- ✅ **Distancia**: Radio de búsqueda (5km, 10km, 25km, 50km, 100km)
 - ✅ **Reputación**: Filtro por nivel mínimo (Bronce, Plata, Oro, Platino)
 - ✅ **Verificación**: Solo usuarios con email verificado
 - ✅ **Estado en línea**: Solo usuarios activos
 - ✅ **Género**: Automático (solo muestra género opuesto)
 
-### 3. **Ordenamiento Inteligente**
+### 4. **Ordenamiento Inteligente**
+- ✅ **Más cercanos** (por distancia geográfica) 🆕
 - ✅ Más recientes (por fecha de registro)
 - ✅ Edad: menor a mayor
 - ✅ Edad: mayor a menor
 - ✅ Mejor reputación primero
 
-### 4. **Interfaz Mejorada**
+### 5. **Interfaz Mejorada**
 
 #### Tarjetas de Usuario
 - ✅ Diseño glassmorphism moderno
@@ -32,7 +49,8 @@ Una aplicación moderna de búsqueda de usuarios para citas con filtros avanzado
 - ✅ Indicador de estado en línea
 - ✅ Badge de verificación
 - ✅ Badge de reputación con emojis
-- ✅ Información compacta (edad, ciudad)
+- ✅ **Badge de distancia** (ej: "2.5 km") 🆕
+- ✅ Información compacta (edad, distancia)
 - ✅ Biografía con line-clamp
 - ✅ Botón "Ver Perfil" principal
 - ✅ Botón de "Match Rápido" (corazón)
@@ -42,6 +60,8 @@ Una aplicación moderna de búsqueda de usuarios para citas con filtros avanzado
 #### Modal de Detalles
 - ✅ Avatar grande con indicador de estado
 - ✅ Badge de verificación
+- ✅ **Distancia desde tu ubicación** 🆕
+- ✅ **Mapa de ubicación del usuario** 🆕
 - ✅ Información completa del usuario
 - ✅ Sección de biografía expandida
 - ✅ **Estadísticas simuladas**:
@@ -111,7 +131,32 @@ Una aplicación moderna de búsqueda de usuarios para citas con filtros avanzado
 
 ## 🛠️ Configuración
 
-### 1. Firebase Setup
+### 1. Google Maps API Setup 🆕
+
+Edita `/webapp/buscar-usuarios.html` línea 11 con tu API key de Google Maps:
+
+```html
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
+```
+
+**Cómo obtener una API key:**
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un nuevo proyecto o selecciona uno existente
+3. Habilita las siguientes APIs:
+   - Maps JavaScript API
+   - Places API
+   - Geocoding API (opcional)
+4. Ve a "Credenciales" → "Crear credenciales" → "Clave de API"
+5. Copia la API key y reemplázala en el código
+6. **IMPORTANTE**: Configura restricciones de dominio para seguridad
+
+**APIs necesarias:**
+- ✅ **Maps JavaScript API** - Para mostrar el mapa
+- ✅ **Places API** - Para autocomplete de ubicaciones
+- ✅ **Geometry Library** - Para cálculos de distancia
+
+### 2. Firebase Setup
 
 Edita `/webapp/js/firebase-config.js` con tu configuración de Firebase:
 
@@ -126,7 +171,7 @@ const firebaseConfig = {
 };
 ```
 
-### 2. Firestore Collections
+### 3. Firestore Collections
 
 La aplicación requiere las siguientes colecciones:
 
@@ -138,6 +183,10 @@ La aplicación requiere las siguientes colecciones:
   birthDate: string (YYYY-MM-DD),
   gender: "masculino" | "femenino" | "otro",
   city: string,
+  location: {                           // 🆕 NUEVO
+    lat: number,                        // Latitud
+    lng: number                         // Longitud
+  },
   bio: string,
   reputation: "BRONCE" | "PLATA" | "ORO" | "PLATINO",
   emailVerified: boolean,
@@ -147,6 +196,11 @@ La aplicación requiere las siguientes colecciones:
   lastActivity: Timestamp
 }
 ```
+
+**Nota sobre `location`:** Este campo es necesario para la funcionalidad de mapas. Se puede obtener mediante:
+- Geolocalización del navegador
+- Geocodificación de la dirección del usuario
+- Selección manual en un mapa durante el registro
 
 #### `matches`
 ```javascript
