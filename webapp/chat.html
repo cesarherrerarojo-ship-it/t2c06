@@ -211,6 +211,13 @@
             <div class="text-sm text-slate-300">No aparecerá en tu lista</div>
           </div>
         </button>
+        <button onclick="reportUser()" class="w-full glass hover:glass-strong p-4 rounded-xl text-left flex items-center gap-3 transition text-orange-400">
+          <i class="fas fa-flag"></i>
+          <div>
+            <div class="font-semibold">Reportar usuario</div>
+            <div class="text-sm text-slate-300">Notificar comportamiento inapropiado</div>
+          </div>
+        </button>
         <button onclick="blockUser()" class="w-full glass hover:glass-strong p-4 rounded-xl text-left flex items-center gap-3 transition text-red-400">
           <i class="fas fa-ban"></i>
           <div>
@@ -681,6 +688,12 @@
 
     window.closeOptionsMenu = function() {
       document.getElementById('optionsMenu').classList.add('hidden');
+    };
+
+    // Report user
+    window.reportUser = function() {
+      closeOptionsMenu();
+      window.location.href = `/webapp/reportes.html?type=user&userId=${otherUserId}`;
     };
 
     // Hide conversation
