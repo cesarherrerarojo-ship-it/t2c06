@@ -3,415 +3,222 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Centro de Seguridad - TuCitaSegura</title>
+  <meta name="description" content="Centro de seguridad y herramientas para reportar problemas en TuCitaSegura.">
+  <title>Seguridad - TuCitaSegura</title>
+  <link rel="canonical" href="https://tucitasegura.com/seguridad">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0F172A">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
       min-height: 100vh;
-      overflow-x: hidden;
     }
 
-    /* Animated background */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background:
-        radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(138, 43, 226, 0.3), transparent 50%),
-        radial-gradient(circle at 40% 20%, rgba(255, 0, 128, 0.2), transparent 50%);
-      animation: backgroundMove 15s ease infinite;
-      z-index: 0;
+    .glass {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.2);
     }
 
-    @keyframes backgroundMove {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.1); }
+    .glass-strong {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.3);
     }
 
-    /* Glassmorphism containers */
-    .glass-container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-    }
-
-    .glass-input {
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 12px;
-      color: white;
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: 0 8px 24px rgba(102,126,234,0.3);
       transition: all 0.3s ease;
     }
 
-    .glass-input:focus {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.5);
-      outline: none;
+    .btn-primary:hover {
       transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(102,126,234,0.4);
     }
 
-    .glass-input::placeholder {
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    /* SOS Button - Pulsing Red */
-    .sos-button {
-      background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
-      animation: sosPulse 2s ease-in-out infinite;
-      box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-    }
-
-    @keyframes sosPulse {
-      0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-      }
-      50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
-      }
-    }
-
-    /* Gradient Buttons */
-    .gradient-button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
       transition: all 0.3s ease;
     }
 
-    .gradient-button:hover {
+    .btn-danger:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-    }
-
-    /* Safety Tips */
-    .safety-tip {
-      background: rgba(255, 255, 255, 0.15);
-      border-left: 4px solid #fbbf24;
-      transition: all 0.3s ease;
-    }
-
-    .safety-tip:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateX(5px);
-    }
-
-    /* Blocked User Card */
-    .blocked-user-card {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-    }
-
-    .blocked-user-card:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-    }
-
-    /* Loading Overlay */
-    .loading-overlay {
-      background: rgba(102, 126, 234, 0.95);
-      backdrop-filter: blur(10px);
-    }
-
-    /* Floating Animation */
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    .float-animation {
-      animation: float 3s ease-in-out infinite;
-    }
-
-    /* Hide scrollbar but keep functionality */
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 12px 32px rgba(239,68,68,0.4);
     }
   </style>
 </head>
-<body class="relative">
+<body class="text-white">
 
-  <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="loading-overlay fixed inset-0 flex items-center justify-center z-50">
-    <div class="text-center">
-      <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
-      <p class="text-white text-xl font-semibold">Cargando...</p>
-    </div>
-  </div>
-
-  <!-- Navigation Bar -->
-  <nav class="glass-container fixed top-0 left-0 right-0 z-40 mx-4 mt-4">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <div class="flex items-center space-x-3">
-          <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-xl">
-            <i class="fas fa-shield-alt text-white text-xl"></i>
+  <!-- Header -->
+  <nav class="glass-strong sticky top-0 z-50 border-b border-white/20">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <a href="/webapp/buscar-usuarios.html" class="text-white/80 hover:text-white transition">
+            <i class="fas fa-arrow-left text-xl"></i>
+          </a>
+          <a href="/" class="flex items-center gap-3">
+            <i class="fa-solid fa-heart-circle-check text-pink-400 text-2xl"></i>
+            <span class="font-black text-xl">TuCitaSegura</span>
+          </a>
+        </div>
+        <div class="flex items-center gap-4">
+          <div id="userInfo" class="flex items-center gap-3">
+            <div id="userAvatar" class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-bold">
+              <i class="fas fa-user"></i>
+            </div>
+            <span id="userAlias" class="font-semibold hidden md:block">Usuario</span>
           </div>
-          <span class="text-white font-bold text-xl">TuCitaSegura</span>
+          <button id="logoutBtn" class="glass px-4 py-2 rounded-xl hover:bg-white/20 transition">
+            Cerrar Sesión
+          </button>
         </div>
-
-        <div class="hidden md:flex items-center space-x-6">
-          <a href="/webapp/buscar-usuarios.html" class="text-white hover:text-purple-200 transition">
-            <i class="fas fa-search mr-2"></i>Buscar
-          </a>
-          <a href="/webapp/conversaciones.html" class="text-white hover:text-purple-200 transition">
-            <i class="fas fa-comments mr-2"></i>Chats
-          </a>
-          <a href="/webapp/perfil.html" class="text-white hover:text-purple-200 transition">
-            <i class="fas fa-user mr-2"></i>Perfil
-          </a>
-          <a href="/webapp/seguridad.html" class="text-white hover:text-purple-200 transition border-b-2 border-white">
-            <i class="fas fa-shield-alt mr-2"></i>Seguridad
-          </a>
-        </div>
-
-        <button id="logoutBtn" class="text-white hover:bg-white hover:bg-opacity-20 px-4 py-2 rounded-lg transition">
-          <i class="fas fa-sign-out-alt mr-2"></i>Salir
-        </button>
       </div>
     </div>
   </nav>
 
-  <!-- Main Content -->
-  <main class="relative z-10 pt-24 pb-12 px-4">
-    <div class="max-w-4xl mx-auto">
+  <main class="container mx-auto px-4 py-8">
+    <!-- Loading -->
+    <div id="loading" class="text-center py-12">
+      <i class="fas fa-spinner fa-spin text-4xl text-purple-400"></i>
+      <p class="mt-4">Cargando...</p>
+    </div>
 
-      <!-- Page Header -->
-      <div class="text-center mb-8 float-animation">
-        <div class="inline-block bg-gradient-to-r from-red-500 to-pink-500 p-4 rounded-2xl mb-4">
-          <i class="fas fa-shield-alt text-white text-5xl"></i>
-        </div>
-        <h1 class="text-white text-4xl md:text-5xl font-bold mb-3">Centro de Seguridad</h1>
-        <p class="text-white text-opacity-90 text-lg">Tu seguridad es nuestra prioridad</p>
+    <!-- Content (hidden until loaded) -->
+    <div id="content" class="hidden">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl md:text-5xl font-black">Centro de Seguridad</h1>
+        <p class="text-slate-200 mt-2 text-lg">Tu tranquilidad es nuestra prioridad. Aquí tienes las herramientas para gestionar tu seguridad.</p>
       </div>
 
-      <!-- SOS Button Section (Only for Women) -->
-      <div id="sosSection" class="hidden glass-container p-8 mb-6">
-        <div class="text-center mb-6">
-          <div class="inline-block bg-red-500 bg-opacity-20 p-3 rounded-full mb-4">
-            <i class="fas fa-exclamation-triangle text-red-300 text-3xl"></i>
-          </div>
-          <h2 class="text-white text-2xl font-bold mb-2">Botón de Emergencia SOS</h2>
-          <p class="text-white text-opacity-80">Presiona este botón solo en caso de emergencia real durante una cita</p>
-        </div>
-
-        <button id="sosButton" class="sos-button w-full py-6 rounded-2xl text-white font-bold text-2xl flex items-center justify-center space-x-4">
-          <i class="fas fa-exclamation-circle text-4xl"></i>
-          <span>ACTIVAR SOS</span>
-        </button>
-
-        <div class="mt-4 bg-red-500 bg-opacity-20 border border-red-300 border-opacity-30 rounded-lg p-4">
-          <p class="text-white text-sm">
-            <i class="fas fa-info-circle mr-2"></i>
-            <strong>Importante:</strong> Al activar el SOS, se notificará tu ubicación actual y datos de contacto al equipo de emergencia. Solo usa este botón si te encuentras en peligro real.
-          </p>
-        </div>
-      </div>
-
-      <!-- Security Actions -->
-      <div class="glass-container p-8 mb-6">
-        <h2 class="text-white text-2xl font-bold mb-6 flex items-center">
-          <i class="fas fa-lock mr-3 text-yellow-300"></i>
-          Acciones de Seguridad
+      <!-- Herramientas de Seguridad -->
+      <div class="glass-strong rounded-2xl p-6 md:p-8 mb-8">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+          <i class="fas fa-shield-alt text-purple-400"></i>
+          Herramientas
         </h2>
-
-        <div class="space-y-4">
-          <!-- Block/Unblock Users -->
-          <div class="safety-tip p-4 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-3">
-                <i class="fas fa-user-slash text-yellow-300 text-xl"></i>
-                <div>
-                  <h3 class="text-white font-semibold">Gestionar Usuarios Bloqueados</h3>
-                  <p class="text-white text-opacity-70 text-sm">Ver y administrar usuarios bloqueados</p>
-                </div>
-              </div>
-              <button id="showBlockedUsersBtn" class="gradient-button px-4 py-2 rounded-lg text-white font-semibold">
-                Ver Lista
-              </button>
+        <div class="space-y-6">
+          <!-- Botón de Pánico (SOS) - Solo visible para mujeres -->
+          <div id="sos-section" class="hidden bg-red-900/50 border-2 border-red-500/50 rounded-lg p-6 flex flex-col sm:flex-row items-center gap-6">
+            <div class="text-6xl text-red-400 flex-shrink-0 animate-pulse">
+              <i class="fa-solid fa-bell"></i>
             </div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold text-red-200">Botón de Pánico SOS</h3>
+              <p class="text-red-200 mt-1">Úsalo solo en una emergencia real. Al activarlo, alertaremos a nuestro equipo de seguridad, que se pondrá en contacto contigo. Si no respondes, nos pondremos en contacto con las autoridades.</p>
+            </div>
+            <button id="sos-button" class="btn-danger font-bold px-6 py-4 rounded-full flex-shrink-0 text-lg shadow-lg animate-pulse">
+              <i class="fa-solid fa-bell mr-2"></i>ACTIVAR SOS
+            </button>
           </div>
 
-          <!-- Report Problem -->
-          <a href="/webapp/reportes.html" class="block">
-            <div class="safety-tip p-4 rounded-lg">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                  <i class="fas fa-flag text-red-300 text-xl"></i>
-                  <div>
-                    <h3 class="text-white font-semibold">Reportar un Problema</h3>
-                    <p class="text-white text-opacity-70 text-sm">Reporta comportamientos inapropiados</p>
-                  </div>
-                </div>
-                <i class="fas fa-chevron-right text-white text-opacity-50"></i>
-              </div>
+          <!-- Reportar un Problema -->
+          <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 flex flex-col sm:flex-row items-center gap-6">
+            <div class="text-4xl text-yellow-400 flex-shrink-0"><i class="fa-solid fa-flag"></i></div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold">Reportar un Problema</h3>
+              <p class="text-yellow-200 mt-1">Si una cita no ha ido bien o has tenido un problema con un usuario, infórmanos.</p>
             </div>
-          </a>
+            <a href="/webapp/reportes.html" class="bg-yellow-600 font-bold px-6 py-3 rounded-full flex-shrink-0 hover:bg-yellow-500 transition-colors">
+              <i class="fa-solid fa-flag mr-2"></i>Crear Reporte
+            </a>
+          </div>
 
-          <!-- Help Center -->
-          <a href="/webapp/ayuda.html" class="block">
-            <div class="safety-tip p-4 rounded-lg">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                  <i class="fas fa-question-circle text-blue-300 text-xl"></i>
-                  <div>
-                    <h3 class="text-white font-semibold">Centro de Ayuda</h3>
-                    <p class="text-white text-opacity-70 text-sm">Preguntas frecuentes y soporte</p>
-                  </div>
-                </div>
-                <i class="fas fa-chevron-right text-white text-opacity-50"></i>
-              </div>
+          <!-- Gestionar Bloqueos -->
+          <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 flex flex-col sm:flex-row items-center gap-6">
+            <div class="text-4xl text-blue-300 flex-shrink-0"><i class="fa-solid fa-user-slash"></i></div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold">Gestionar Usuarios Bloqueados</h3>
+              <p class="text-blue-200 mt-1">Aquí puedes ver la lista de usuarios que has bloqueado y desbloquearlos si lo consideras oportuno.</p>
             </div>
-          </a>
+            <button id="manageBlocksBtn" class="glass font-bold px-6 py-3 rounded-full flex-shrink-0 hover:bg-white/20">
+              <i class="fa-solid fa-list-check mr-2"></i>Ver Lista
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Safety Tips -->
-      <div class="glass-container p-8">
-        <h2 class="text-white text-2xl font-bold mb-6 flex items-center">
-          <i class="fas fa-lightbulb mr-3 text-yellow-300"></i>
-          Consejos de Seguridad
+      <!-- Consejos de Seguridad -->
+      <div class="mt-12">
+        <h2 class="text-2xl font-bold mb-6 text-center">
+          <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+          Consejos para Citas Seguras
         </h2>
-
-        <div class="space-y-3">
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              Siempre queda en lugares públicos y concurridos para la primera cita
-            </p>
+        <div class="grid md:grid-cols-2 gap-6 text-sm">
+          <div class="glass rounded-lg p-4 flex items-start gap-4">
+            <i class="fa-solid fa-comments text-xl text-blue-300 mt-1"></i>
+            <div>
+              <h4 class="font-bold">Comunícate primero</h4>
+              <p class="text-blue-200">Habla un tiempo a través del chat antes de quedar.</p>
+            </div>
           </div>
-
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              Informa a un amigo o familiar sobre tu cita (hora, lugar, persona)
-            </p>
+          <div class="glass rounded-lg p-4 flex items-start gap-4">
+            <i class="fa-solid fa-users text-xl text-blue-300 mt-1"></i>
+            <div>
+              <h4 class="font-bold">Queda en lugares públicos</h4>
+              <p class="text-blue-200">Elige lugares concurridos, especialmente en las primeras citas.</p>
+            </div>
           </div>
-
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              Mantén tu teléfono cargado y activa tu ubicación durante la cita
-            </p>
+          <div class="glass rounded-lg p-4 flex items-start gap-4">
+            <i class="fa-solid fa-mobile-screen-button text-xl text-blue-300 mt-1"></i>
+            <div>
+              <h4 class="font-bold">Informa a alguien</h4>
+              <p class="text-blue-200">Coméntale a un amigo con quién, dónde y a qué hora has quedado.</p>
+            </div>
           </div>
-
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              No compartas información personal sensible hasta conocer bien a la persona
-            </p>
-          </div>
-
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              Confía en tu instinto: si algo no se siente bien, retírate
-            </p>
-          </div>
-
-          <div class="safety-tip p-4 rounded-lg">
-            <p class="text-white">
-              <i class="fas fa-check-circle text-green-300 mr-2"></i>
-              Usa el sistema de depósito de seguridad para mayor protección
-            </p>
+          <div class="glass rounded-lg p-4 flex items-start gap-4">
+            <i class="fa-solid fa-martini-glass text-xl text-blue-300 mt-1"></i>
+            <div>
+              <h4 class="font-bold">Controla tu bebida</h4>
+              <p class="text-blue-200">No dejes tu bebida desatendida y modera el consumo de alcohol.</p>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </main>
 
-  <!-- Blocked Users Modal -->
-  <div id="blockedUsersModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="glass-container max-w-2xl w-full max-h-[80vh] overflow-y-auto p-8">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-white text-2xl font-bold">Usuarios Bloqueados</h2>
-        <button id="closeBlockedUsersModal" class="text-white hover:text-red-300 transition">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
+  <!-- Modal de Confirmación SOS -->
+  <div id="sos-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="glass-strong rounded-2xl p-8 max-w-lg w-full m-4 text-center border-2 border-red-500">
+      <i class="fa-solid fa-triangle-exclamation text-6xl text-red-400 mb-4"></i>
+      <h2 class="text-3xl font-bold text-red-300">¿Estás en una emergencia?</h2>
+      <p class="text-red-200 mt-4">Estás a punto de activar el protocolo SOS.</p>
+      <div class="text-left bg-black/20 p-4 rounded-lg mt-6 space-y-2">
+        <p><strong class="text-white">Paso 1:</strong> Nuestro equipo de seguridad recibirá una alerta inmediata y te llamará al número de teléfono asociado a tu cuenta.</p>
+        <p><strong class="text-white">Paso 2:</strong> Si no respondes a la llamada, contactaremos a las autoridades locales con tu última ubicación conocida.</p>
       </div>
-
-      <div id="blockedUsersList" class="space-y-3">
-        <!-- Blocked users will be loaded here -->
-      </div>
-
-      <div id="noBlockedUsers" class="hidden text-center py-8">
-        <i class="fas fa-user-check text-white text-opacity-50 text-5xl mb-4"></i>
-        <p class="text-white text-opacity-70">No tienes usuarios bloqueados</p>
+      <p class="text-amber-400 font-semibold mt-6">Usa esta función con responsabilidad.</p>
+      <div class="flex gap-4 mt-8">
+        <button id="cancel-sos" class="glass font-bold w-full py-3 rounded-full hover:bg-white/20">Cancelar</button>
+        <button id="confirm-sos" class="btn-danger font-bold w-full py-3 rounded-full">Sí, Activar SOS</button>
       </div>
     </div>
   </div>
 
-  <!-- SOS Confirmation Modal -->
-  <div id="sosConfirmModal" class="hidden fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="glass-container max-w-md w-full p-8">
-      <div class="text-center mb-6">
-        <div class="inline-block bg-red-500 bg-opacity-30 p-4 rounded-full mb-4">
-          <i class="fas fa-exclamation-triangle text-red-300 text-4xl"></i>
-        </div>
-        <h2 class="text-white text-2xl font-bold mb-2">¿Activar SOS?</h2>
-        <p class="text-white text-opacity-80">
-          Esto enviará una alerta de emergencia con tu ubicación actual.
-          <strong>Solo continúa si estás en peligro real.</strong>
-        </p>
-      </div>
-
-      <div class="space-y-3">
-        <button id="confirmSosBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition">
-          <i class="fas fa-exclamation-circle mr-2"></i>
-          Sí, Activar SOS
-        </button>
-        <button id="cancelSosBtn" class="w-full glass-input text-white font-semibold py-3 rounded-lg hover:bg-white hover:bg-opacity-30 transition">
-          Cancelar
-        </button>
-      </div>
+  <!-- Pantalla de Alerta Activada -->
+  <div id="sos-activated-screen" class="fixed inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-40 hidden p-4">
+    <div class="text-center">
+      <i class="fa-solid fa-siren-on text-8xl text-red-300 animate-pulse"></i>
+      <h2 class="text-4xl font-bold text-white mt-6">SOS ACTIVADO</h2>
+      <p class="text-red-200 text-lg mt-4 max-w-2xl">Hemos alertado a nuestro equipo de seguridad. Te llamaremos en breve. Si no contestas, avisaremos a las autoridades. Mantén la calma y busca un lugar seguro.</p>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="hidden fixed bottom-8 right-8 glass-container px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
-    <div class="flex items-center space-x-3">
-      <i id="toastIcon" class="fas fa-check-circle text-2xl"></i>
-      <p id="toastMessage" class="text-white font-semibold"></p>
-    </div>
-  </div>
-
-  <!-- Firebase Scripts -->
   <script type="module">
     import { auth, db } from './js/firebase-config.js';
-    import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { showToast } from './js/utils.js';
     import { loadTheme } from './js/theme.js';
 
     let currentUser = null;
@@ -419,210 +226,107 @@
 
     // Check authentication
     onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        await loadUserData();
-        document.getElementById('loadingOverlay').classList.add('hidden');
-      } else {
-        window.location.href = '/webapp/login.html';
+      if (!user) {
+        window.location.href = '/';
+        return;
       }
-    });
 
-    // Load user data
-    async function loadUserData() {
+      currentUser = user;
+
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        // Load user data
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           currentUserData = { id: userDoc.id, ...userDoc.data() };
 
           // Load user theme
           loadTheme(currentUserData);
 
-          // Show SOS section only for women
-          if (currentUserData.gender === 'femenino') {
-            document.getElementById('sosSection').classList.remove('hidden');
+          // Update UI
+          document.getElementById('userAlias').textContent = currentUserData.alias || 'Usuario';
+
+          // Show avatar or initial
+          if (currentUserData.photoURL) {
+            document.getElementById('userAvatar').innerHTML = `<img src="${currentUserData.photoURL}" class="w-full h-full rounded-full object-cover">`;
+          } else {
+            const initial = (currentUserData.alias || currentUserData.email || 'U')[0].toUpperCase();
+            document.getElementById('userAvatar').textContent = initial;
           }
+
+          // Show SOS button only for women
+          if (currentUserData.gender === 'femenino') {
+            const sosSection = document.getElementById('sos-section');
+            sosSection.classList.remove('hidden');
+            sosSection.classList.add('flex');
+          }
+
+          // Hide loading, show content
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
         }
       } catch (error) {
         console.error('Error loading user data:', error);
         showToast('Error al cargar datos de usuario', 'error');
       }
-    }
+    });
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       try {
         await signOut(auth);
-        window.location.href = '/webapp/login.html';
+        window.location.href = '/';
       } catch (error) {
         console.error('Error signing out:', error);
         showToast('Error al cerrar sesión', 'error');
       }
     });
 
-    // SOS Button - Show confirmation modal
-    document.getElementById('sosButton')?.addEventListener('click', () => {
-      document.getElementById('sosConfirmModal').classList.remove('hidden');
-    });
+    // SOS Button Logic
+    const sosButton = document.getElementById('sos-button');
+    const sosModal = document.getElementById('sos-modal');
+    const cancelSosButton = document.getElementById('cancel-sos');
+    const confirmSosButton = document.getElementById('confirm-sos');
+    const sosActivatedScreen = document.getElementById('sos-activated-screen');
 
-    // Cancel SOS
-    document.getElementById('cancelSosBtn').addEventListener('click', () => {
-      document.getElementById('sosConfirmModal').classList.add('hidden');
-    });
-
-    // Confirm SOS - Activate emergency alert
-    document.getElementById('confirmSosBtn').addEventListener('click', async () => {
-      try {
-        // Get current location
-        if (!navigator.geolocation) {
-          showToast('Geolocalización no disponible en tu navegador', 'error');
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(async (position) => {
-          const { latitude, longitude } = position.coords;
-
-          // Save SOS alert to Firestore
-          await addDoc(collection(db, 'sos_alerts'), {
-            userId: currentUser.uid,
-            userName: currentUserData.alias || currentUserData.email,
-            userEmail: currentUserData.email,
-            userPhone: currentUserData.phone || 'No registrado',
-            location: {
-              lat: latitude,
-              lng: longitude
-            },
-            timestamp: serverTimestamp(),
-            status: 'active',
-            resolved: false
-          });
-
-          // Hide modal
-          document.getElementById('sosConfirmModal').classList.add('hidden');
-
-          // Show success message
-          showToast('Alerta SOS activada. El equipo de emergencia ha sido notificado.', 'success');
-
-          // Optional: You could also send an email or SMS notification here
-          // using a Cloud Function triggered by the Firestore write
-
-        }, (error) => {
-          console.error('Error getting location:', error);
-          showToast('No se pudo obtener tu ubicación. Verifica los permisos.', 'error');
-        });
-
-      } catch (error) {
-        console.error('Error activating SOS:', error);
-        showToast('Error al activar SOS', 'error');
-      }
-    });
-
-    // Show Blocked Users Modal
-    document.getElementById('showBlockedUsersBtn').addEventListener('click', async () => {
-      document.getElementById('blockedUsersModal').classList.remove('hidden');
-      await loadBlockedUsers();
-    });
-
-    // Close Blocked Users Modal
-    document.getElementById('closeBlockedUsersModal').addEventListener('click', () => {
-      document.getElementById('blockedUsersModal').classList.add('hidden');
-    });
-
-    // Load Blocked Users
-    async function loadBlockedUsers() {
-      try {
-        const blockedUserIds = currentUserData.blockedUsers || [];
-
-        if (blockedUserIds.length === 0) {
-          document.getElementById('noBlockedUsers').classList.remove('hidden');
-          document.getElementById('blockedUsersList').innerHTML = '';
-          return;
-        }
-
-        document.getElementById('noBlockedUsers').classList.add('hidden');
-        const blockedUsersList = document.getElementById('blockedUsersList');
-        blockedUsersList.innerHTML = '';
-
-        // Load each blocked user's data
-        for (const blockedUserId of blockedUserIds) {
-          try {
-            const blockedUserDoc = await getDoc(doc(db, 'users', blockedUserId));
-            if (blockedUserDoc.exists()) {
-              const blockedUser = { id: blockedUserDoc.id, ...blockedUserDoc.data() };
-
-              const userCard = document.createElement('div');
-              userCard.className = 'blocked-user-card p-4 flex items-center justify-between';
-              userCard.innerHTML = `
-                <div class="flex items-center space-x-3">
-                  ${blockedUser.photoURL
-                    ? `<img src="${blockedUser.photoURL}" alt="${blockedUser.alias}" class="w-12 h-12 rounded-full object-cover">`
-                    : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                         <span class="text-white font-bold text-xl">${(blockedUser.alias || 'U')[0].toUpperCase()}</span>
-                       </div>`
-                  }
-                  <div>
-                    <p class="text-white font-semibold">${blockedUser.alias || 'Usuario'}</p>
-                    <p class="text-white text-opacity-60 text-sm">${blockedUser.city || 'Ciudad no especificada'}</p>
-                  </div>
-                </div>
-                <button onclick="unblockUser('${blockedUser.id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition">
-                  <i class="fas fa-user-check mr-2"></i>Desbloquear
-                </button>
-              `;
-              blockedUsersList.appendChild(userCard);
-            }
-          } catch (error) {
-            console.error('Error loading blocked user:', error);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading blocked users:', error);
-        showToast('Error al cargar usuarios bloqueados', 'error');
-      }
+    if (sosButton) {
+      sosButton.addEventListener('click', () => {
+        sosModal.classList.remove('hidden');
+      });
     }
 
-    // Unblock User
-    window.unblockUser = async (userId) => {
+    cancelSosButton.addEventListener('click', () => {
+      sosModal.classList.add('hidden');
+    });
+
+    confirmSosButton.addEventListener('click', async () => {
+      sosModal.classList.add('hidden');
+      sosActivatedScreen.classList.remove('hidden');
+
       try {
-        // Remove from blockedUsers array
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          blockedUsers: arrayRemove(userId)
+        // Save SOS alert to Firestore
+        await addDoc(collection(db, 'sos_alerts'), {
+          userId: currentUser.uid,
+          userAlias: currentUserData.alias,
+          userEmail: currentUserData.email,
+          userPhone: currentUserData.phone || 'No disponible',
+          timestamp: serverTimestamp(),
+          status: 'active',
+          location: currentUserData.location || null
         });
 
-        // Update local data
-        currentUserData.blockedUsers = (currentUserData.blockedUsers || []).filter(id => id !== userId);
-
-        showToast('Usuario desbloqueado correctamente', 'success');
-
-        // Reload list
-        await loadBlockedUsers();
+        console.log('SOS Alert sent to Firebase');
+        showToast('Alerta SOS enviada. El equipo de seguridad ha sido notificado.', 'info');
       } catch (error) {
-        console.error('Error unblocking user:', error);
-        showToast('Error al desbloquear usuario', 'error');
+        console.error('Error sending SOS alert:', error);
+        showToast('Error al enviar alerta SOS', 'error');
       }
-    };
+    });
 
-    // Toast notification
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      const toastMessage = document.getElementById('toastMessage');
-      const toastIcon = document.getElementById('toastIcon');
-
-      toastMessage.textContent = message;
-
-      if (type === 'success') {
-        toastIcon.className = 'fas fa-check-circle text-green-400 text-2xl';
-      } else if (type === 'error') {
-        toastIcon.className = 'fas fa-exclamation-circle text-red-400 text-2xl';
-      }
-
-      toast.classList.remove('hidden');
-
-      setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 4000);
-    }
+    // Manage Blocks Button
+    document.getElementById('manageBlocksBtn').addEventListener('click', () => {
+      showToast('Funcionalidad en desarrollo', 'info');
+      // TODO: Navigate to blocked users page
+    });
   </script>
-
 </body>
 </html>
