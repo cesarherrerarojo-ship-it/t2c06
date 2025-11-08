@@ -5,15 +5,14 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // Your web app's Firebase configuration
-// TODO: Replace with your actual Firebase config
+// Configuration extracted from project logs
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  apiKey: "AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s",
+  authDomain: "tuscitasseguras-2d1a6.firebaseapp.com",
+  projectId: "tuscitasseguras-2d1a6",
+  storageBucket: "tuscitasseguras-2d1a6.firebasestorage.app",
+  messagingSenderId: "924208562587",
+  appId: "1:924208562587:web:5291359426fe390b36213e"
 };
 
 // Initialize Firebase
