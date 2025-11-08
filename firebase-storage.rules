@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for TuCitaSegura
+// Copy and paste these rules into Firebase Console > Storage > Rules
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Profile photos - avatars and gallery photos
+    match /profile_photos/{userId}/{filename} {
+      // Anyone can read profile photos (public)
+      allow read: if true;
+
+      // Only authenticated users can write their own photos
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');  // Images only
+    }
+
+    // Event photos for VIP events (uploaded by concierges)
+    match /event_photos/{eventId}/{filename} {
+      // Women can read event photos
+      allow read: if request.auth != null;
+
+      // Only concierges can upload event photos
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024  // Max 10MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // SOS emergency photos/videos
+    match /sos_evidence/{userId}/{filename} {
+      // Only admins and the user who uploaded can read
+      allow read: if request.auth != null
+                  && (request.auth.uid == userId ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'admin');
+
+      // User can upload evidence when activating SOS
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 50 * 1024 * 1024;  // Max 50MB
+    }
+
+    // Verification documents (ID, proof of address, etc.)
+    match /verification_docs/{userId}/{filename} {
+      // Only admins can read verification documents
+      allow read: if request.auth != null
+                  && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'admin';
+
+      // Users can upload their own verification documents
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 10 * 1024 * 1024;  // Max 10MB
+    }
+
+    // Chat attachments (images, videos, files)
+    match /chat_attachments/{conversationId}/{filename} {
+      // Participants in the conversation can read
+      allow read: if request.auth != null
+                  && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+
+      // Participants can upload attachments
+      allow write: if request.auth != null
+                   && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+                   && request.resource.size < 25 * 1024 * 1024;  // Max 25MB
+    }
+
+    // Default: deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
