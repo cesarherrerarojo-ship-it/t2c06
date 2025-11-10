@@ -322,6 +322,10 @@
 
   <!-- Firebase Scripts -->
   <script type="module">
+    // Import App Check FIRST (must be before firebase-config.js)
+    import '../js/firebase-appcheck.js';
+
+    // Then import Firebase services
     import { auth, db } from '../js/firebase-config.js';
     import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { doc, getDoc, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
