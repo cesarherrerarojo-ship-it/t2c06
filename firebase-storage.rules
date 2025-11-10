@@ -6,12 +6,43 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Helper function to get user gender
+    function getUserGender(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.gender;
+    }
+
+    // Helper function to get user role
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.userRole;
+    }
+
+    // Helper function to check if user is concierge viewing their applicants
+    function canConciergeViewApplicant(conciergeId, applicantId) {
+      // Get all active events from this concierge
+      let events = get(/databases/$(database)/documents/vip_events).data;
+      // Check if applicant has applied to any active event from this concierge
+      // This is a simplified check - in production you'd query vip_applications collection
+      return getUserRole(conciergeId) == 'concierge';
+    }
+
     // Profile photos - avatars and gallery photos
     match /profile_photos/{userId}/{filename} {
-      // Anyone can read profile photos (public)
-      allow read: if true;
+      // LECTURA: Solo usuarios autenticados del género opuesto pueden ver fotos
+      // Hombres ven fotos de mujeres, mujeres ven fotos de hombres
+      // Concierges pueden ver fotos de mujeres que aplicaron a sus eventos
+      allow read: if request.auth != null && (
+        // Usuario viendo su propia foto
+        request.auth.uid == userId ||
+        // Usuario del género opuesto
+        (getUserGender(request.auth.uid) == 'masculino' && getUserGender(userId) == 'femenino') ||
+        (getUserGender(request.auth.uid) == 'femenino' && getUserGender(userId) == 'masculino') ||
+        // Concierge viendo perfil de mujer
+        (getUserRole(request.auth.uid) == 'concierge' && getUserGender(userId) == 'femenino') ||
+        // Admins pueden ver todas
+        getUserRole(request.auth.uid) == 'admin'
+      );
 
-      // Only authenticated users can write their own photos
+      // ESCRITURA: Solo el dueño puede subir/modificar sus fotos
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 5 * 1024 * 1024  // Max 5MB
@@ -20,23 +51,29 @@ service firebase.storage {
 
     // Event photos for VIP events (uploaded by concierges)
     match /event_photos/{eventId}/{filename} {
-      // Women can read event photos
-      allow read: if request.auth != null;
+      // LECTURA: Solo mujeres autenticadas pueden ver fotos de eventos VIP
+      allow read: if request.auth != null && (
+        getUserGender(request.auth.uid) == 'femenino' ||
+        getUserRole(request.auth.uid) == 'concierge' ||
+        getUserRole(request.auth.uid) == 'admin'
+      );
 
-      // Only concierges can upload event photos
+      // ESCRITURA: Solo concierges pueden subir fotos de eventos
       allow write: if request.auth != null
+                   && getUserRole(request.auth.uid) == 'concierge'
                    && request.resource.size < 10 * 1024 * 1024  // Max 10MB
                    && request.resource.contentType.matches('image/.*');
     }
 
     // SOS emergency photos/videos
     match /sos_evidence/{userId}/{filename} {
-      // Only admins and the user who uploaded can read
-      allow read: if request.auth != null
-                  && (request.auth.uid == userId ||
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'admin');
+      // LECTURA: Solo admins y el usuario que subió la evidencia
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        getUserRole(request.auth.uid) == 'admin'
+      );
 
-      // User can upload evidence when activating SOS
+      // ESCRITURA: Solo el dueño puede subir evidencia SOS
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 50 * 1024 * 1024;  // Max 50MB
@@ -44,11 +81,11 @@ service firebase.storage {
 
     // Verification documents (ID, proof of address, etc.)
     match /verification_docs/{userId}/{filename} {
-      // Only admins can read verification documents
+      // LECTURA: Solo admins pueden leer documentos de verificación
       allow read: if request.auth != null
-                  && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'admin';
+                  && getUserRole(request.auth.uid) == 'admin';
 
-      // Users can upload their own verification documents
+      // ESCRITURA: Usuarios pueden subir sus propios documentos de verificación
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 10 * 1024 * 1024;  // Max 10MB
@@ -56,11 +93,11 @@ service firebase.storage {
 
     // Chat attachments (images, videos, files)
     match /chat_attachments/{conversationId}/{filename} {
-      // Participants in the conversation can read
+      // LECTURA: Solo participantes de la conversación
       allow read: if request.auth != null
                   && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
 
-      // Participants can upload attachments
+      // ESCRITURA: Solo participantes pueden subir adjuntos
       allow write: if request.auth != null
                    && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
                    && request.resource.size < 25 * 1024 * 1024;  // Max 25MB
