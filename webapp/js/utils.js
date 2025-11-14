@@ -410,13 +410,112 @@ export function calculateCompatibility(user1, user2) {
 }
 
 /**
- * Sanitize HTML to prevent XSS
+ * Sanitize HTML to prevent XSS attacks
+ *
+ * This function escapes ALL HTML, converting it to plain text.
+ * Use this when you want to display user input as text.
+ *
+ * IMPORTANT: If you only need to display text (no HTML tags),
+ * use element.textContent instead of element.innerHTML for better performance.
+ *
  * @param {string} html - HTML string to sanitize
- * @returns {string} Sanitized HTML
+ * @returns {string} Sanitized HTML (all tags escaped)
+ *
+ * @example
+ * // BAD - vulnerable to XSS
+ * element.innerHTML = userInput;
+ *
+ * // GOOD - user input escaped
+ * element.innerHTML = sanitizeHTML(userInput);
+ *
+ * // BETTER - for plain text only
+ * element.textContent = userInput;
  */
 export function sanitizeHTML(html) {
+  if (!html) return '';
   const temp = document.createElement('div');
   temp.textContent = html;
+  return temp.innerHTML;
+}
+
+/**
+ * Sanitize HTML allowing safe tags
+ *
+ * This function allows basic formatting tags while removing dangerous attributes.
+ * Use only when you need to preserve basic HTML formatting.
+ *
+ * Allowed tags: p, br, strong, b, em, i, u, a, ul, ol, li
+ * Dangerous attributes removed: onclick, onload, onerror, javascript:, etc.
+ *
+ * @param {string} html - HTML string to sanitize
+ * @returns {string} Sanitized HTML with safe tags preserved
+ *
+ * @example
+ * const userBio = '<p>Hello <strong>world</strong><script>alert("xss")</script></p>';
+ * element.innerHTML = sanitizeHTMLAllowTags(userBio);
+ * // Result: '<p>Hello <strong>world</strong></p>'
+ */
+export function sanitizeHTMLAllowTags(html) {
+  if (!html) return '';
+
+  // Create temporary element
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+
+  // Allowed tags
+  const allowedTags = ['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'A', 'UL', 'OL', 'LI', 'SPAN', 'DIV'];
+
+  // Dangerous attributes
+  const dangerousAttrs = ['onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur'];
+
+  // Recursively clean nodes
+  function cleanNode(node) {
+    // Remove script and style tags
+    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') {
+      node.remove();
+      return;
+    }
+
+    // Remove disallowed tags (keep content)
+    if (node.tagName && !allowedTags.includes(node.tagName)) {
+      const textNode = document.createTextNode(node.textContent);
+      node.replaceWith(textNode);
+      return;
+    }
+
+    // Remove dangerous attributes
+    if (node.attributes) {
+      for (let attr of [...node.attributes]) {
+        // Remove event handlers
+        if (attr.name.startsWith('on')) {
+          node.removeAttribute(attr.name);
+        }
+        // Remove javascript: URLs
+        if (attr.value && attr.value.toLowerCase().includes('javascript:')) {
+          node.removeAttribute(attr.name);
+        }
+        // Remove data: URLs (can contain XSS)
+        if (attr.value && attr.value.toLowerCase().startsWith('data:')) {
+          node.removeAttribute(attr.name);
+        }
+      }
+    }
+
+    // Clean children
+    for (let child of [...node.childNodes]) {
+      if (child.nodeType === 1) { // Element node
+        cleanNode(child);
+      }
+    }
+  }
+
+  // Clean all nodes
+  for (let child of [...temp.childNodes]) {
+    if (child.nodeType === 1) {
+      cleanNode(child);
+    }
+  }
+
   return temp.innerHTML;
 }
 
@@ -470,6 +569,7 @@ export default {
   getGenderIcon,
   calculateCompatibility,
   sanitizeHTML,
+  sanitizeHTMLAllowTags,
   copyToClipboard,
   formatFileSize
 };
