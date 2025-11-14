@@ -36,7 +36,7 @@ https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
 
 **Copia y pega este token:**
 ```
-cb4a5b8b-3dbf-40af-b973-0115297ecb84
+BCF51A42-7B5F-4009-B8D7-30AF50EA661B
 ```
 
 **Display name sugerido:** `Localhost Development`
@@ -131,7 +131,7 @@ http://localhost:5000/webapp/test-firebase-connection.html
 #### Solución 1: Verificar que el token está activo
 
 1. Ve a Firebase Console → App Check → Apps
-2. Verifica que ves el token `cb4a5b8b-3dbf-40af-b973-0115297ecb84`
+2. Verifica que ves el token `BCF51A42-7B5F-4009-B8D7-30AF50EA661B`
 3. Confirma que el estado es **"Active"** (no "Revoked")
 
 #### Solución 2: Generar un nuevo token
@@ -204,7 +204,7 @@ Abre DevTools → Network:
 2. Pégalo en el otro navegador:
    ```javascript
    // En consola
-   localStorage.setItem('FIREBASE_APPCHECK_DEBUG_TOKEN', 'cb4a5b8b-3dbf-40af-b973-0115297ecb84');
+   localStorage.setItem('FIREBASE_APPCHECK_DEBUG_TOKEN', 'BCF51A42-7B5F-4009-B8D7-30AF50EA661B');
    ```
 3. Recarga
 
@@ -288,7 +288,7 @@ Para producción, necesitas configurar ReCAPTCHA Enterprise:
 **Project ID:** `tuscitasseguras-2d1a6`
 **Web App ID:** `1:924208562587:web:5291359426fe390b36213e`
 **reCAPTCHA Site Key:** `6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2`
-**Debug Token:** `cb4a5b8b-3dbf-40af-b973-0115297ecb84`
+**Debug Token:** `BCF51A42-7B5F-4009-B8D7-30AF50EA661B`
 
 **URLs Útiles:**
 - Firebase Console App Check: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
@@ -301,7 +301,7 @@ Para producción, necesitas configurar ReCAPTCHA Enterprise:
 ## 🎯 Resumen Rápido (TL;DR)
 
 1. **Abre:** https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
-2. **Registra token:** `cb4a5b8b-3dbf-40af-b973-0115297ecb84`
+2. **Registra token:** `BCF51A42-7B5F-4009-B8D7-30AF50EA661B`
 3. **Desactiva Enforcement:** Authentication, Firestore, Storage → Unenforced
 4. **Limpia cache:** `localStorage.clear(); sessionStorage.clear();`
 5. **Recarga:** Ctrl + Shift + R
