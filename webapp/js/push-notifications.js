@@ -83,11 +83,19 @@ export async function requestNotificationPermission(db, userId) {
     }
 
     // Get FCM token
-    // Note: You need to add your VAPID key from Firebase Console
-    const vapidKey = 'YOUR_VAPID_KEY_HERE'; // TODO: Replace with actual VAPID key
+    // VAPID key from firebase-config.js
+    const { VAPID_PUBLIC_KEY } = await import('./firebase-config.js');
+
+    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('xxx')) {
+      console.error('VAPID key not configured in firebase-config.js');
+      return {
+        success: false,
+        error: 'VAPID key no configurada. Contacta al administrador.'
+      };
+    }
 
     const token = await getToken(messaging, {
-      vapidKey: vapidKey
+      vapidKey: VAPID_PUBLIC_KEY
     });
 
     if (!token) {

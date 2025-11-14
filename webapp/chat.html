@@ -129,6 +129,9 @@
 
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
+          <button id="videoCallBtn" onclick="startVideoCall()" class="glass hover:glass-strong p-3 rounded-xl transition bg-gradient-to-r from-blue-500/20 to-purple-500/20" title="Iniciar video llamada">
+            <i class="fas fa-video text-lg"></i>
+          </button>
           <button onclick="openDateProposal()" class="glass hover:glass-strong p-3 rounded-xl transition" title="Proponer cita">
             <i class="fas fa-calendar-plus text-lg"></i>
           </button>
@@ -753,6 +756,28 @@
         console.error('Error blocking user:', error);
         showToast('Error al bloquear usuario', 'error');
       }
+    };
+
+    // Video call
+    window.startVideoCall = function() {
+      // Check membership - CRITICAL VALIDATION
+      const userMustPay = currentUserData.gender === 'masculino';
+      if (userMustPay && !currentUserData.hasActiveSubscription) {
+        showToast('💳 Membresía Premium requerida para video llamadas', 'error');
+        if (confirm('Para realizar video llamadas necesitas una Membresía Premium (€29.99/mes).\n\n¿Deseas suscribirte ahora?')) {
+          window.location.href = '/webapp/suscripcion.html';
+        }
+        return;
+      }
+
+      // Verificar soporte del navegador
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Tu navegador no soporta video llamadas. Usa Chrome, Firefox o Edge.', 'error');
+        return;
+      }
+
+      // Redirigir a página de video chat
+      window.location.href = `/webapp/video-chat.html?conversationId=${conversationId}&remoteUserId=${otherUserId}&action=call`;
     };
 
     // Date proposal
