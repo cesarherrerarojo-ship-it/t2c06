@@ -1,144 +1,243 @@
-/**
- * Firebase Cloud Messaging Service Worker
- * Handles background push notifications for TuCitaSegura
- */
+// ============================================================================
+// FIREBASE CLOUD MESSAGING SERVICE WORKER
+// ============================================================================
+// Este service worker maneja las notificaciones push en background
+// cuando la app no está abierta
+// ============================================================================
 
-// Import Firebase scripts for service worker
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-// Initialize Firebase in service worker
-// Note: Replace with your Firebase config
+// Configuración de Firebase
+// IMPORTANTE: Debe coincidir con webapp/js/firebase-config.js
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s",
+  authDomain: "tuscitasseguras-2d1a6.firebaseapp.com",
+  projectId: "tuscitasseguras-2d1a6",
+  storageBucket: "tuscitasseguras-2d1a6.firebasestorage.app",
+  messagingSenderId: "924208562587",
+  appId: "1:924208562587:web:5291359426fe390b36213e"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Get messaging instance
+// Inicializar Messaging
 const messaging = firebase.messaging();
 
-// Handle background messages
+// ============================================================================
+// BACKGROUND MESSAGE HANDLER
+// ============================================================================
+
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-  const notificationTitle = payload.notification?.title || 'TuCitaSegura';
+  // Extraer información del payload
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'TuCitaSegura';
   const notificationOptions = {
-    body: payload.notification?.body || 'Tienes una nueva notificación',
-    icon: payload.notification?.icon || '/assets/icon.png',
-    badge: '/assets/badge.png',
-    vibrate: [200, 100, 200],
-    data: payload.data || {},
-    tag: payload.data?.type || 'general',
+    body: payload.notification?.body || payload.data?.body || 'Tienes una nueva notificación',
+    icon: payload.notification?.icon || payload.data?.icon || '/webapp/img/icon-192x192.png',
+    badge: '/webapp/img/badge-72x72.png',
+    tag: payload.data?.type || 'default',
     requireInteraction: false,
-    actions: [
-      {
-        action: 'open',
-        title: 'Abrir'
-      },
-      {
-        action: 'close',
-        title: 'Cerrar'
-      }
-    ]
+    vibrate: [200, 100, 200],
+    data: payload.data || {}
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // Agregar imagen si existe
+  if (payload.notification?.image || payload.data?.image) {
+    notificationOptions.image = payload.notification.image || payload.data.image;
+  }
+
+  // Agregar actions según el tipo de notificación
+  if (payload.data?.type) {
+    switch (payload.data.type) {
+      case 'new_message':
+        notificationOptions.actions = [
+          { action: 'reply', title: 'Responder' },
+          { action: 'view', title: 'Ver' }
+        ];
+        break;
+
+      case 'date_request':
+        notificationOptions.actions = [
+          { action: 'accept', title: 'Aceptar' },
+          { action: 'decline', title: 'Rechazar' }
+        ];
+        break;
+
+      case 'new_match':
+        notificationOptions.actions = [
+          { action: 'view', title: 'Ver Perfil' },
+          { action: 'chat', title: 'Enviar Mensaje' }
+        ];
+        break;
+
+      default:
+        notificationOptions.actions = [
+          { action: 'view', title: 'Ver' }
+        ];
+    }
+  }
+
+  // Mostrar notificación
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification click
+// ============================================================================
+// NOTIFICATION CLICK HANDLER
+// ============================================================================
+
 self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification click received:', event);
+  console.log('[firebase-messaging-sw.js] Notification clicked:', event);
 
   event.notification.close();
 
-  if (event.action === 'close') {
-    return;
-  }
-
-  // Handle different notification types
   const data = event.notification.data;
-  let targetUrl = data.url || '/webapp/perfil.html';
+  let urlToOpen = '/webapp/index.html';
 
-  // Determine URL based on notification type
-  switch (data.type) {
-    case 'new_match':
-      targetUrl = '/webapp/conversaciones.html';
-      break;
+  // Determinar URL según el tipo de notificación
+  if (data.type) {
+    switch (data.type) {
+      case 'new_message':
+        if (data.conversationId) {
+          urlToOpen = `/webapp/chat.html?conversationId=${data.conversationId}`;
+        } else {
+          urlToOpen = '/webapp/conversaciones.html';
+        }
+        break;
 
-    case 'new_message':
-      if (data.conversationId) {
-        targetUrl = `/webapp/chat.html?id=${data.conversationId}`;
-      }
-      break;
+      case 'new_match':
+        if (data.userId) {
+          urlToOpen = `/webapp/perfil.html?userId=${data.userId}`;
+        } else {
+          urlToOpen = '/webapp/buscar-usuarios.html';
+        }
+        break;
 
-    case 'date_request':
-    case 'date_confirmed':
-    case 'date_reminder':
-      if (data.appointmentId) {
-        targetUrl = `/webapp/cita-detalle.html?id=${data.appointmentId}`;
-      }
-      break;
+      case 'date_request':
+      case 'date_confirmed':
+      case 'date_reminder':
+        if (data.appointmentId) {
+          urlToOpen = `/webapp/cita-detalle.html?id=${data.appointmentId}`;
+        } else {
+          urlToOpen = '/webapp/conversaciones.html';
+        }
+        break;
 
-    case 'new_badge':
-      targetUrl = '/webapp/logros.html';
-      break;
+      case 'payment_success':
+      case 'payment_failed':
+        urlToOpen = '/webapp/cuenta-pagos.html';
+        break;
 
-    case 'vip_event':
-      targetUrl = '/webapp/eventos-vip.html';
-      break;
+      case 'profile_verified':
+      case 'new_badge':
+        urlToOpen = '/webapp/perfil.html';
+        break;
 
-    case 'referral_completed':
-      targetUrl = '/webapp/referidos.html';
-      break;
+      case 'referral_completed':
+        urlToOpen = '/webapp/referidos.html';
+        break;
+
+      case 'vip_event':
+        if (data.eventId) {
+          urlToOpen = `/webapp/evento-detalle.html?id=${data.eventId}`;
+        } else {
+          urlToOpen = '/webapp/eventos-vip.html';
+        }
+        break;
+
+      case 'admin_message':
+        urlToOpen = '/webapp/ayuda.html';
+        break;
+
+      default:
+        urlToOpen = '/webapp/index.html';
+    }
   }
 
-  // Open the app at the target URL
+  // Manejar acciones personalizadas
+  if (event.action) {
+    switch (event.action) {
+      case 'reply':
+        if (data.conversationId) {
+          urlToOpen = `/webapp/chat.html?conversationId=${data.conversationId}&autoFocus=true`;
+        }
+        break;
+
+      case 'view':
+        // Ya se maneja arriba según el tipo
+        break;
+
+      case 'accept':
+        if (data.appointmentId) {
+          urlToOpen = `/webapp/cita-detalle.html?id=${data.appointmentId}&action=accept`;
+        }
+        break;
+
+      case 'decline':
+        if (data.appointmentId) {
+          urlToOpen = `/webapp/cita-detalle.html?id=${data.appointmentId}&action=decline`;
+        }
+        break;
+
+      case 'chat':
+        if (data.conversationId) {
+          urlToOpen = `/webapp/chat.html?conversationId=${data.conversationId}`;
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  // Abrir o enfocar la ventana
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Check if there's already a window open
+        // Si ya hay una ventana abierta, enfocarla
         for (const client of clientList) {
-          if (client.url === targetUrl && 'focus' in client) {
-            return client.focus();
+          if (client.url.includes('webapp') && 'focus' in client) {
+            return client.focus().then(client => {
+              // Navegar a la URL
+              if (client.navigate) {
+                return client.navigate(urlToOpen);
+              }
+            });
           }
         }
 
-        // If not, open a new window
+        // Si no hay ventana abierta, abrir una nueva
         if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
+          return clients.openWindow(urlToOpen);
         }
       })
   );
 });
 
-// Handle push event (for custom handling)
+// ============================================================================
+// PUSH EVENT HANDLER (Fallback)
+// ============================================================================
+
 self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push received:', event);
-
-  if (!event.data) {
-    return;
-  }
-
-  try {
-    const data = event.data.json();
-    console.log('[Service Worker] Push data:', data);
-
-    // Custom handling for specific notification types
-    if (data.type === 'silent') {
-      // Silent notification - don't show anything
-      // Just update app state or cache
-      return;
-    }
-
-  } catch (error) {
-    console.error('[Service Worker] Error parsing push data:', error);
+  if (event.data) {
+    console.log('[firebase-messaging-sw.js] Push received:', event.data.text());
   }
 });
 
-console.log('[Service Worker] Firebase Messaging Service Worker loaded');
+// ============================================================================
+// SERVICE WORKER LIFECYCLE
+// ============================================================================
+
+self.addEventListener('install', (event) => {
+  console.log('[firebase-messaging-sw.js] Service Worker installing');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('[firebase-messaging-sw.js] Service Worker activating');
+  event.waitUntil(clients.claim());
+});
+
+console.log('[firebase-messaging-sw.js] Service Worker loaded');
