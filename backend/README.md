@@ -1,5 +1,28 @@
 # 🐍 TuCitaSegura Backend - Python API
 
+> ⚠️ **IMPORTANT NOTICE - NOT CURRENTLY USED**
+>
+> **This Python backend is NOT being used in the current production application.**
+>
+> TuCitaSegura currently runs entirely on Firebase services:
+> - ✅ Firebase Authentication
+> - ✅ Cloud Firestore (database)
+> - ✅ Cloud Functions (Node.js 18) → See `/functions/index.js`
+> - ✅ Firebase Storage
+> - ✅ Firebase Hosting
+>
+> **Why does this backend exist?**
+> It was prepared for future ML/AI features (recommendations, photo verification, analytics), but these features are **not yet implemented or deployed**.
+>
+> **Should you use it?**
+> Only if you plan to add Machine Learning, Computer Vision, or advanced analytics features. Otherwise, the Firebase-only architecture is simpler and cheaper.
+>
+> **Status:** 📦 **ARCHIVED** - Ready for future use
+>
+> **Last Updated:** 2025-11-14
+
+---
+
 Backend API con FastAPI, Machine Learning, Computer Vision, y Analytics avanzados para TuCitaSegura.
 
 ## 🚀 Características

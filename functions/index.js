@@ -87,6 +87,56 @@ async function logInsurance(userId, insuranceData) {
   console.log(`[logInsurance] Insurance logged for user ${userId}`);
 }
 
+/**
+ * Crear notificación para el usuario
+ * @param {string} userId - ID del usuario
+ * @param {Object} notification - Datos de la notificación
+ */
+async function createUserNotification(userId, notification) {
+  const db = admin.firestore();
+
+  const notificationData = {
+    userId,
+    title: notification.title,
+    message: notification.message,
+    type: notification.type || 'info', // 'info', 'warning', 'error', 'success'
+    read: false,
+    actionUrl: notification.actionUrl || null,
+    actionLabel: notification.actionLabel || null,
+    metadata: notification.metadata || {},
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await db.collection('notifications').add(notificationData);
+  console.log(`[createUserNotification] Notification created for user ${userId}: ${notification.title}`);
+}
+
+/**
+ * Registrar pago fallido para análisis
+ * @param {string} userId - ID del usuario
+ * @param {Object} paymentData - Datos del pago fallido
+ */
+async function logFailedPayment(userId, paymentData) {
+  const db = admin.firestore();
+
+  const failedPaymentRecord = {
+    userId,
+    paymentId: paymentData.paymentId,
+    provider: paymentData.provider || 'unknown', // 'stripe', 'paypal'
+    type: paymentData.type || 'unknown', // 'subscription', 'insurance', 'one-time'
+    amount: paymentData.amount || 0,
+    currency: paymentData.currency || 'EUR',
+    reason: paymentData.reason || 'unknown',
+    errorCode: paymentData.errorCode || null,
+    errorMessage: paymentData.errorMessage || null,
+    metadata: paymentData.metadata || {},
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  await db.collection('failed_payments').add(failedPaymentRecord);
+  console.log(`[logFailedPayment] Failed payment logged for user ${userId}: ${paymentData.paymentId}`);
+}
+
 // ============================================================================
 // 1) CUSTOM CLAIMS: Al crear el doc de usuario, fijamos displayName y claims
 // ============================================================================
@@ -449,8 +499,36 @@ async function handlePaymentFailed(paymentIntent) {
 
   console.error(`[handlePaymentFailed] Payment ${paymentIntent.id} failed for user ${userId}`);
 
-  // TODO: Enviar notificación al usuario
-  // TODO: Registrar en colección de failed_payments
+  // Registrar pago fallido
+  await logFailedPayment(userId, {
+    paymentId: paymentIntent.id,
+    provider: 'stripe',
+    type: paymentIntent.metadata.type || 'unknown',
+    amount: paymentIntent.amount / 100, // Stripe usa centavos
+    currency: paymentIntent.currency.toUpperCase(),
+    reason: paymentIntent.status,
+    errorCode: paymentIntent.last_payment_error?.code || null,
+    errorMessage: paymentIntent.last_payment_error?.message || null,
+    metadata: {
+      customerId: paymentIntent.customer,
+      paymentMethod: paymentIntent.payment_method
+    }
+  });
+
+  // Notificar al usuario
+  await createUserNotification(userId, {
+    title: 'Problema con tu pago',
+    message: 'No pudimos procesar tu pago. Por favor, verifica tu método de pago o intenta con otro.',
+    type: 'error',
+    actionUrl: '/webapp/cuenta-pagos.html',
+    actionLabel: 'Actualizar método de pago',
+    metadata: {
+      paymentIntentId: paymentIntent.id,
+      errorCode: paymentIntent.last_payment_error?.code
+    }
+  });
+
+  console.log(`[handlePaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
 
 /**
@@ -470,7 +548,38 @@ async function handleInvoicePaymentFailed(invoice) {
 
   console.error(`[handleInvoicePaymentFailed] Invoice payment failed for user ${userId}`);
 
-  // TODO: Enviar email de recordatorio de pago
+  // Registrar pago fallido
+  await logFailedPayment(userId, {
+    paymentId: invoice.id,
+    provider: 'stripe',
+    type: 'subscription',
+    amount: invoice.amount_due / 100,
+    currency: invoice.currency.toUpperCase(),
+    reason: 'invoice_payment_failed',
+    errorCode: invoice.last_finalization_error?.code || null,
+    errorMessage: invoice.last_finalization_error?.message || null,
+    metadata: {
+      subscriptionId: subscriptionId,
+      attempt_count: invoice.attempt_count,
+      next_payment_attempt: invoice.next_payment_attempt
+    }
+  });
+
+  // Notificar al usuario
+  await createUserNotification(userId, {
+    title: 'Renovación de membresía fallida',
+    message: `No pudimos procesar la renovación de tu membresía (€${(invoice.amount_due / 100).toFixed(2)}). Tu cuenta está en estado "vencido". Por favor, actualiza tu método de pago para mantener el acceso.`,
+    type: 'error',
+    actionUrl: '/webapp/cuenta-pagos.html',
+    actionLabel: 'Actualizar método de pago',
+    metadata: {
+      invoiceId: invoice.id,
+      subscriptionId: subscriptionId,
+      attemptCount: invoice.attempt_count
+    }
+  });
+
+  console.log(`[handleInvoicePaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
 
 /**
@@ -767,5 +876,35 @@ async function handlePayPalPaymentFailed(sale) {
 
   console.error(`[handlePayPalPaymentFailed] Payment ${sale.id} failed for user ${userId}`);
 
-  // TODO: Enviar notificación al usuario
+  // Registrar pago fallido
+  await logFailedPayment(userId, {
+    paymentId: sale.id,
+    provider: 'paypal',
+    type: 'sale',
+    amount: parseFloat(sale.amount?.total || 0),
+    currency: sale.amount?.currency || 'EUR',
+    reason: sale.state || 'denied',
+    errorCode: null,
+    errorMessage: sale.reason_code || 'Payment denied or refunded',
+    metadata: {
+      createTime: sale.create_time,
+      updateTime: sale.update_time,
+      reasonCode: sale.reason_code
+    }
+  });
+
+  // Notificar al usuario
+  await createUserNotification(userId, {
+    title: 'Problema con tu pago de PayPal',
+    message: 'No pudimos procesar tu pago con PayPal. Por favor, verifica tu cuenta de PayPal o intenta con otro método de pago.',
+    type: 'error',
+    actionUrl: '/webapp/cuenta-pagos.html',
+    actionLabel: 'Ver métodos de pago',
+    metadata: {
+      saleId: sale.id,
+      reasonCode: sale.reason_code
+    }
+  });
+
+  console.log(`[handlePayPalPaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
