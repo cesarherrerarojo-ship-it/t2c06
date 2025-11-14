@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="common.appName">TuCitaSegura</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(138, 43, 226, 0.3), transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(255, 0, 128, 0.2), transparent 50%);
+      animation: float 20s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="relative z-10 min-h-screen py-8 px-4">
+    <!-- Header -->
+    <div class="max-w-6xl mx-auto mb-8">
+      <div class="glass rounded-2xl p-6 animate-fadeIn">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center gap-4">
+            <a href="perfil.html" class="text-gray-600 hover:text-purple-600 transition">
+              <i class="fas fa-arrow-left text-2xl"></i>
+            </a>
+            <div>
+              <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" data-i18n="settings.language">
+                Idioma
+              </h1>
+              <p class="text-gray-600 mt-1">Demostración del Sistema de Multilenguaje</p>
+            </div>
+          </div>
+
+          <!-- Language Selector (Dropdown Style) -->
+          <div id="languageSelectorContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-6xl mx-auto space-y-6">
+      <!-- Language Switcher (Inline Style) -->
+      <div class="glass rounded-2xl p-8 animate-fadeIn">
+        <h2 class="text-2xl font-bold mb-6">Selector de Idioma Inline</h2>
+        <div id="inlineSwitcherContainer"></div>
+      </div>
+
+      <!-- Translations Example -->
+      <div class="glass rounded-2xl p-8 animate-fadeIn">
+        <h2 class="text-2xl font-bold mb-6" data-i18n="common.appName">TuCitaSegura</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Authentication Translations -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-purple-600">Autenticación</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Login Title:</span>
+                <span class="font-semibold" data-i18n="auth.login.title">Iniciar Sesión</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Register Title:</span>
+                <span class="font-semibold" data-i18n="auth.register.title">Crear Cuenta</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Email:</span>
+                <span class="font-semibold" data-i18n="auth.login.email">Correo electrónico</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Password:</span>
+                <span class="font-semibold" data-i18n="auth.login.password">Contraseña</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Common Translations -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-purple-600">Comunes</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Welcome:</span>
+                <span class="font-semibold" data-i18n="common.welcome">Bienvenido</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Loading:</span>
+                <span class="font-semibold" data-i18n="common.loading">Cargando...</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Save:</span>
+                <span class="font-semibold" data-i18n="common.save">Guardar</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Cancel:</span>
+                <span class="font-semibold" data-i18n="common.cancel">Cancelar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Translations -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-purple-600">Perfil</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">My Profile:</span>
+                <span class="font-semibold" data-i18n="profile.title">Mi Perfil</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Edit Profile:</span>
+                <span class="font-semibold" data-i18n="profile.edit">Editar Perfil</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Photos:</span>
+                <span class="font-semibold" data-i18n="profile.photos">Mis fotos</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Bio:</span>
+                <span class="font-semibold" data-i18n="profile.bio">Biografía</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Features Translations -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-purple-600">Características</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Matches:</span>
+                <span class="font-semibold" data-i18n="matches.title">Mis Matches</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Conversations:</span>
+                <span class="font-semibold" data-i18n="conversations.title">Conversaciones</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Dates:</span>
+                <span class="font-semibold" data-i18n="dates.title">Mis Citas</span>
+              </div>
+              <div class="flex justify-between border-b pb-2">
+                <span class="text-gray-600">Badges:</span>
+                <span class="font-semibold" data-i18n="badges.title">Logros y Badges</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholder Examples -->
+      <div class="glass rounded-2xl p-8 animate-fadeIn">
+        <h2 class="text-2xl font-bold mb-6">Ejemplos de Inputs con Traducciones</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2" data-i18n="auth.login.email">Correo electrónico</label>
+            <input
+              type="email"
+              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-600 focus:outline-none"
+              data-i18n-placeholder="auth.login.emailPlaceholder"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-2" data-i18n="auth.login.password">Contraseña</label>
+            <input
+              type="password"
+              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-600 focus:outline-none"
+              data-i18n-placeholder="auth.login.passwordPlaceholder"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-2" data-i18n="common.search">Buscar</label>
+            <input
+              type="text"
+              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-600 focus:outline-none"
+              placeholder="Buscar..."
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-2" data-i18n="profile.bio">Biografía</label>
+            <textarea
+              class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-600 focus:outline-none"
+              rows="3"
+              data-i18n-placeholder="profile.bioPlaceholder"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parameterized Translations -->
+      <div class="glass rounded-2xl p-8 animate-fadeIn">
+        <h2 class="text-2xl font-bold mb-6">Traducciones con Parámetros</h2>
+
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold mb-2">Age (Edad):</h3>
+            <p id="ageExample" class="text-gray-700"></p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold mb-2">Distance Range (Rango de Distancia):</h3>
+            <p id="distanceExample" class="text-gray-700"></p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold mb-2">Match Request (Solicitud de Match):</h3>
+            <p id="matchExample" class="text-gray-700"></p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold mb-2">Time Ago (Hace cuánto):</h3>
+            <p id="timeExample" class="text-gray-700"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Implementation Guide -->
+      <div class="glass rounded-2xl p-8 animate-fadeIn">
+        <h2 class="text-2xl font-bold mb-6">Guía de Implementación</h2>
+
+        <div class="space-y-6">
+          <div>
+            <h3 class="font-semibold text-lg mb-3">1. Importar el Sistema i18n:</h3>
+            <div class="code-block">
+import { initI18n, t, translateAll } from './js/i18n.js';
+            </div>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-lg mb-3">2. Inicializar en tu Página:</h3>
+            <div class="code-block">
+// Initialize with user data
+await initI18n(userData);
+
+// Translate all elements
+translateAll();
+            </div>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-lg mb-3">3. Usar en HTML (Atributos data-i18n):</h3>
+            <div class="code-block">
+&lt;h1 data-i18n="common.welcome"&gt;Bienvenido&lt;/h1&gt;
+&lt;input data-i18n-placeholder="auth.login.emailPlaceholder"&gt;
+            </div>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-lg mb-3">4. Usar en JavaScript:</h3>
+            <div class="code-block">
+// Simple translation
+const title = t('common.welcome');
+
+// With parameters
+const message = t('profile.age', { age: 25 });
+
+// Show toast in current language
+showToast(t('success.profileUpdated'), 'success');
+            </div>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-lg mb-3">5. Agregar Selector de Idioma:</h3>
+            <div class="code-block">
+import { createLanguageSelector, initLanguageSelector } from './js/language-selector.js';
+
+// Create selector HTML
+container.innerHTML = createLanguageSelector();
+
+// Initialize
+initLanguageSelector('#languageSelectorContainer', db, userId);
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { auth, db } from './js/firebase-config.js';
+    import './js/firebase-appcheck.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { loadTheme } from './js/theme.js';
+    import { initI18n, t, translateAll, formatDate, formatCurrency } from './js/i18n.js';
+    import {
+      createLanguageSelector,
+      initLanguageSelector,
+      createInlineLanguageSwitcher,
+      initInlineLanguageSwitcher,
+      addLanguageSelectorStyles
+    } from './js/language-selector.js';
+
+    let currentUser = null;
+    let currentUserData = null;
+
+    // Add language selector styles
+    addLanguageSelectorStyles();
+
+    // Initialize
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // Demo mode - just initialize with default language
+        await initI18n();
+        setupPage();
+        return;
+      }
+
+      currentUser = user;
+      await loadUserData();
+    });
+
+    async function loadUserData() {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          currentUserData = userDoc.data();
+          loadTheme(currentUserData);
+
+          // Initialize i18n with user preference
+          await initI18n(currentUserData);
+        } else {
+          // Initialize with default
+          await initI18n();
+        }
+
+        setupPage();
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        // Initialize with default
+        await initI18n();
+        setupPage();
+      }
+    }
+
+    function setupPage() {
+      // Translate all elements
+      translateAll();
+
+      // Create and initialize dropdown language selector
+      const dropdownContainer = document.getElementById('languageSelectorContainer');
+      dropdownContainer.innerHTML = createLanguageSelector({ showNativeName: true });
+      initLanguageSelector('#languageSelectorContainer', db, currentUser?.uid, () => {
+        console.log('Language changed!');
+      });
+
+      // Create and initialize inline language switcher
+      const inlineContainer = document.getElementById('inlineSwitcherContainer');
+      inlineContainer.innerHTML = createInlineLanguageSwitcher({ showFlags: true });
+      initInlineLanguageSwitcher('#inlineSwitcherContainer', db, currentUser?.uid);
+
+      // Example parameterized translations
+      document.getElementById('ageExample').textContent = t('profile.age', { age: 28 });
+      document.getElementById('distanceExample').textContent = t('search.distanceRange', { distance: 15 });
+      document.getElementById('matchExample').textContent = t('matches.request.received', { name: 'María' });
+      document.getElementById('timeExample').textContent = t('common.time.hoursAgo', { count: 3 });
+    }
+
+  </script>
+</body>
+</html>
