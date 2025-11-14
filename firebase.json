@@ -19,6 +19,7 @@
     ]
   },
   "hosting": {
+    "site": "tuscitasseguras-2d1a6",
     "public": ".",
     "ignore": [
       "firebase.json",
