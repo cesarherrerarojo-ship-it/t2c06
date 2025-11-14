@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seguro Anti-Plantón - TuCitaSegura</title>
+  <title>Membresía Premium - TuCitaSegura</title>
 
   <!-- Tailwind CSS -->
   <link rel="stylesheet" href="./css/output.css">
@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <!-- PayPal SDK -->
-  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=EUR"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&vault=true&intent=subscription"></script>
 
   <style>
     body {
@@ -71,10 +71,10 @@
   <div id="successModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full p-8 text-center fade-in">
       <div class="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-        <i class="fas fa-shield-check text-4xl text-white"></i>
+        <i class="fas fa-check text-4xl text-white"></i>
       </div>
-      <h3 class="text-3xl font-bold mb-4">¡Seguro Activado!</h3>
-      <p class="text-slate-200 mb-6">Tu seguro anti-plantón ha sido activado exitosamente. Ahora puedes agendar citas con total confianza.</p>
+      <h3 class="text-3xl font-bold mb-4">¡Membresía Activada!</h3>
+      <p class="text-slate-200 mb-6">Tu membresía premium ha sido activada exitosamente. Ahora puedes disfrutar de todas las funciones de TuCitaSegura.</p>
       <button onclick="redirectToSearch()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition transform hover:scale-105">
         Comenzar a Buscar
       </button>
@@ -108,22 +108,22 @@
         <span>Volver a búsqueda</span>
       </a>
       <h1 class="text-4xl md:text-5xl font-bold mb-4">
-        <i class="fas fa-shield-check text-green-400"></i>
-        Seguro Anti-Plantón
+        <i class="fas fa-crown text-yellow-400"></i>
+        Membresía Premium
       </h1>
-      <p class="text-xl text-slate-200">Protección garantizada para tus citas</p>
+      <p class="text-xl text-slate-200">Accede a todas las funciones de TuCitaSegura</p>
     </div>
 
     <!-- Pricing Card -->
     <div class="glass-strong rounded-2xl p-8 mb-8 fade-in">
       <div class="text-center mb-8">
-        <div class="inline-block bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold mb-4">
-          PAGO ÚNICO
+        <div class="inline-block bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold mb-4">
+          MEJOR VALOR
         </div>
         <div class="text-6xl font-bold mb-2">
-          €120
+          €29<span class="text-3xl text-slate-300">.99</span>
         </div>
-        <p class="text-slate-300 text-lg">pago único - válido para siempre</p>
+        <p class="text-slate-300 text-lg">por mes</p>
       </div>
 
       <!-- Features List -->
@@ -133,8 +133,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Agenda Citas sin Límites</h4>
-            <p class="text-slate-300">Organiza todas las citas que quieras con total libertad</p>
+            <h4 class="font-bold text-lg">Envía Solicitudes de Cita</h4>
+            <p class="text-slate-300">Conecta con personas que te interesan sin límites</p>
           </div>
         </div>
 
@@ -143,8 +143,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Protección Económica</h4>
-            <p class="text-slate-300">Si tu cita no se presenta, recuperas tu inversión</p>
+            <h4 class="font-bold text-lg">Chat sin Restricciones</h4>
+            <p class="text-slate-300">Mantén conversaciones con todos tus matches</p>
           </div>
         </div>
 
@@ -153,8 +153,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Sistema de Verificación</h4>
-            <p class="text-slate-300">Confirmación de asistencia en tiempo real</p>
+            <h4 class="font-bold text-lg">Búsqueda Avanzada</h4>
+            <p class="text-slate-300">Filtros por ubicación, edad, reputación y más</p>
           </div>
         </div>
 
@@ -163,8 +163,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Reputación Protegida</h4>
-            <p class="text-slate-300">Los plantones afectan negativamente la reputación del otro usuario</p>
+            <h4 class="font-bold text-lg">Vista en Mapa</h4>
+            <p class="text-slate-300">Encuentra personas cerca de ti con geolocalización</p>
           </div>
         </div>
 
@@ -173,8 +173,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Válido Para Siempre</h4>
-            <p class="text-slate-300">Pago único sin renovaciones ni cargos adicionales</p>
+            <h4 class="font-bold text-lg">Sistema de Reputación</h4>
+            <p class="text-slate-300">Construye tu reputación y gana confianza</p>
           </div>
         </div>
 
@@ -183,36 +183,10 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Soporte Dedicado</h4>
-            <p class="text-slate-300">Asistencia prioritaria para cualquier incidencia</p>
+            <h4 class="font-bold text-lg">Soporte Prioritario</h4>
+            <p class="text-slate-300">Atención al cliente con respuesta prioritaria</p>
           </div>
         </div>
-      </div>
-
-      <!-- How It Works -->
-      <div class="glass rounded-xl p-6 mb-6">
-        <h4 class="font-bold text-xl mb-4 text-center">
-          <i class="fas fa-info-circle text-blue-400 mr-2"></i>
-          ¿Cómo Funciona?
-        </h4>
-        <ol class="space-y-3 text-slate-300">
-          <li class="flex gap-3">
-            <span class="font-bold text-white">1.</span>
-            <span>Agenda una cita con tu match dentro de la plataforma</span>
-          </li>
-          <li class="flex gap-3">
-            <span class="font-bold text-white">2.</span>
-            <span>Ambos confirman asistencia 24h antes de la cita</span>
-          </li>
-          <li class="flex gap-3">
-            <span class="font-bold text-white">3.</span>
-            <span>Verifican su presencia al llegar al lugar de la cita</span>
-          </li>
-          <li class="flex gap-3">
-            <span class="font-bold text-white">4.</span>
-            <span>Si tu cita no llega, su reputación baja y recibes compensación</span>
-          </li>
-        </ol>
       </div>
 
       <!-- PayPal Button Container -->
@@ -221,21 +195,7 @@
       <!-- Security Notice -->
       <div class="glass rounded-xl p-4 text-center text-sm text-slate-300">
         <i class="fas fa-lock mr-2"></i>
-        Pago seguro procesado por PayPal. Pago único sin renovaciones automáticas.
-      </div>
-    </div>
-
-    <!-- Important Notice -->
-    <div class="glass-strong rounded-2xl p-6 mb-8 border-2 border-yellow-500/50 fade-in">
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-          <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
-        </div>
-        <div>
-          <h4 class="font-bold text-xl mb-2 text-yellow-400">Requisito Importante</h4>
-          <p class="text-slate-200">Para agendar citas necesitas tanto la <strong>membresía premium</strong> (€29.99/mes) como el <strong>seguro anti-plantón</strong> (€120 pago único).</p>
-          <p class="text-slate-300 mt-2">Si aún no tienes la membresía premium, puedes contratarla <a href="/webapp/suscripcion.html" class="text-yellow-400 hover:text-yellow-300 underline">aquí</a>.</p>
-        </div>
+        Pago seguro procesado por PayPal. Cancela en cualquier momento.
       </div>
     </div>
 
@@ -245,23 +205,18 @@
 
       <div class="space-y-4">
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Por qué 120€?</summary>
-          <p class="mt-3 text-slate-300">El seguro cubre los costos operativos del sistema de verificación, compensaciones por plantones y mantiene un compromiso serio de ambas partes. Es un pago único válido para siempre.</p>
+          <summary class="font-bold text-lg">¿Puedo cancelar en cualquier momento?</summary>
+          <p class="mt-3 text-slate-300">Sí, puedes cancelar tu suscripción en cualquier momento desde tu cuenta de PayPal. No hay cargos por cancelación y seguirás teniendo acceso hasta el final del período que pagaste.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Qué pasa si me plantan?</summary>
-          <p class="mt-3 text-slate-300">Si tu cita no se presenta y no verifica su asistencia, su reputación bajará significativamente y podrías recibir compensación según las políticas de la plataforma. Tu seguro te protege.</p>
+          <summary class="font-bold text-lg">¿Qué pasa si cancelo mi membresía?</summary>
+          <p class="mt-3 text-slate-300">Si cancelas, perderás acceso a las funciones premium (enviar solicitudes y chat) pero mantendrás tu perfil y podrás reactivar tu membresía cuando quieras.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿El seguro caduca?</summary>
-          <p class="mt-3 text-slate-300">No, el seguro es válido para siempre una vez pagado. Es un pago único sin renovaciones ni cargos adicionales.</p>
-        </details>
-
-        <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Puedo pedir reembolso?</summary>
-          <p class="mt-3 text-slate-300">Debido a la naturaleza del servicio y la activación inmediata del seguro, no ofrecemos reembolsos una vez completado el pago.</p>
+          <summary class="font-bold text-lg">¿Necesito también el seguro anti-plantón?</summary>
+          <p class="mt-3 text-slate-300">La membresía te permite chatear y enviar solicitudes. Para agendar citas presenciales necesitarás también contratar el seguro anti-plantón de 120€ (pago único).</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
@@ -270,8 +225,8 @@
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿También necesito la membresía?</summary>
-          <p class="mt-3 text-slate-300">Sí, para agendar citas necesitas tanto la membresía premium (€29.99/mes) para enviar solicitudes y chatear, como el seguro anti-plantón (€120) para confirmar las citas.</p>
+          <summary class="font-bold text-lg">¿Qué métodos de pago aceptan?</summary>
+          <p class="mt-3 text-slate-300">Aceptamos tarjetas de crédito, débito y cuenta PayPal a través de PayPal Checkout.</p>
         </details>
       </div>
     </div>
@@ -284,7 +239,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -309,45 +264,44 @@
 
     // Initialize PayPal Button
     function initPayPalButton() {
+      // NOTA: Necesitarás crear un plan de suscripción en tu cuenta de PayPal
+      // y reemplazar 'YOUR_SUBSCRIPTION_PLAN_ID' con el ID real del plan
+
       paypal.Buttons({
         style: {
           shape: 'rect',
           color: 'gold',
           layout: 'vertical',
-          label: 'paypal',
+          label: 'subscribe',
           height: 50
         },
 
-        createOrder: function(data, actions) {
-          return actions.order.create({
-            purchase_units: [{
-              description: 'Seguro Anti-Plantón TuCitaSegura',
-              amount: {
-                currency_code: 'EUR',
-                value: '120.00'
-              },
-              custom_id: currentUser.uid // Vincula el pago al usuario
-            }]
+        createSubscription: function(data, actions) {
+          return actions.subscription.create({
+            'plan_id': 'YOUR_SUBSCRIPTION_PLAN_ID', // TODO: Reemplazar con tu plan ID real
+            'custom_id': currentUser.uid // Vincula la suscripción al usuario
           });
         },
 
         onApprove: async function(data, actions) {
+          console.log('Subscription approved:', data);
+
           // Mostrar overlay de carga
           document.getElementById('loadingOverlay').classList.remove('hidden');
 
           try {
-            // Capturar el pago
-            const details = await actions.order.capture();
-            console.log('Payment captured:', details);
-
-            // Actualizar Firestore con los datos del seguro
+            // Actualizar Firestore con los datos de la suscripción
             const userRef = doc(db, 'users', currentUser.uid);
 
+            const subscriptionEndDate = new Date();
+            subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+
             await updateDoc(userRef, {
-              hasAntiGhostingInsurance: true,
-              insurancePaymentId: data.orderID,
-              insurancePurchaseDate: serverTimestamp(),
-              insuranceAmount: 120,
+              hasActiveSubscription: true,
+              subscriptionId: data.subscriptionID,
+              subscriptionStartDate: serverTimestamp(),
+              subscriptionEndDate: subscriptionEndDate,
+              subscriptionStatus: 'active',
               updatedAt: serverTimestamp()
             });
 
@@ -362,7 +316,7 @@
           } catch (error) {
             console.error('Error updating Firestore:', error);
             document.getElementById('loadingOverlay').classList.add('hidden');
-            showError('Error al activar tu seguro. Por favor contacta soporte con tu ID de transacción: ' + data.orderID);
+            showError('Error al activar tu membresía. Por favor contacta soporte.');
           }
         },
 
@@ -373,9 +327,9 @@
         },
 
         onCancel: function(data) {
-          console.log('Payment cancelled:', data);
+          console.log('Subscription cancelled:', data);
           document.getElementById('loadingOverlay').classList.add('hidden');
-          showError('Cancelaste el proceso de pago. Tu seguro no fue activado.');
+          showError('Cancelaste el proceso de pago. Tu membresía no fue activada.');
         }
 
       }).render('#paypal-button-container');
