@@ -7,16 +7,18 @@ const axios = require('axios');
 admin.initializeApp();
 
 // ============================================================================
-// IMPORT: Insurance Auto-Capture Functions
+// IMPORT: Insurance Penalties System
 // ============================================================================
 const {
-  autoCaptureExpiringInsurance,
-  manualCaptureInsurance
-} = require('./insurance-auto-capture');
+  cancelAppointmentWithPenalty,
+  processNoShow,
+  renewExpiringAuthorizations
+} = require('./insurance-penalties');
 
 // Re-export para que Firebase las detecte
-exports.autoCaptureExpiringInsurance = autoCaptureExpiringInsurance;
-exports.manualCaptureInsurance = manualCaptureInsurance;
+exports.cancelAppointmentWithPenalty = cancelAppointmentWithPenalty;
+exports.processNoShow = processNoShow;
+exports.renewExpiringAuthorizations = renewExpiringAuthorizations;
 
 // ============================================================================
 // HELPER FUNCTIONS: Payment management
