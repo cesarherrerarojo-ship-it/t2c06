@@ -31,6 +31,9 @@ async function updateUserMembership(userId, status, subscriptionData = {}) {
   if (subscriptionData.endDate) {
     updateData.subscriptionEndDate = subscriptionData.endDate;
   }
+  if (subscriptionData.provider) {
+    updateData.paymentProvider = subscriptionData.provider; // ← NUEVO: Track payment provider
+  }
 
   await userRef.update(updateData);
   console.log(`[updateUserMembership] User ${userId} membership updated: ${status}`);
@@ -67,6 +70,7 @@ async function updateUserInsurance(userId, paymentData) {
     insurancePaymentId: paymentData.paymentId,
     insurancePurchaseDate: paymentData.purchaseDate || admin.firestore.FieldValue.serverTimestamp(),
     insuranceAmount: paymentData.amount || 120,
+    insuranceProvider: paymentData.provider || 'unknown', // ← NUEVO: Track payment provider
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   };
 
@@ -942,6 +946,123 @@ async function handlePayPalPaymentFailed(sale) {
 
   console.log(`[handlePayPalPaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
+
+// ============================================================================
+// STRIPE CHECKOUT SESSION
+// ============================================================================
+
+/**
+ * Create Stripe Checkout Session (Callable Function)
+ * Called from frontend to initiate Stripe payment
+ */
+exports.createStripeCheckoutSession = functions.https.onCall(async (data, context) => {
+  // 1. Check authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to create checkout session'
+    );
+  }
+
+  const userId = context.auth.uid;
+  const { productType, successUrl, cancelUrl } = data;
+
+  // 2. Validate input
+  if (!productType || !['membership', 'insurance'].includes(productType)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'productType must be "membership" or "insurance"'
+    );
+  }
+
+  if (!successUrl || !cancelUrl) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'successUrl and cancelUrl are required'
+    );
+  }
+
+  try {
+    // 3. Configure Stripe session based on product type
+    let sessionConfig;
+
+    if (productType === 'membership') {
+      // Membership: Recurring subscription (€29.99/month)
+      sessionConfig = {
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: 'TuCitaSegura - Membresía Premium',
+              description: 'Acceso completo: Chat ilimitado, solicitudes de cita, filtros avanzados',
+              images: ['https://tuscitasseguras-2d1a6.web.app/img/membership-icon.png'] // TODO: Update with actual image
+            },
+            recurring: {
+              interval: 'month'
+            },
+            unit_amount: 2999 // €29.99 in cents
+          },
+          quantity: 1
+        }],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        client_reference_id: userId,
+        customer_email: context.auth.token.email,
+        metadata: {
+          userId: userId,
+          productType: 'membership'
+        }
+      };
+    } else if (productType === 'insurance') {
+      // Insurance: One-time payment (€120)
+      sessionConfig = {
+        payment_method_types: ['card'],
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: 'TuCitaSegura - Seguro Anti-Plantón',
+              description: 'Pago único de por vida. Protección contra plantones verificados.',
+              images: ['https://tuscitasseguras-2d1a6.web.app/img/insurance-icon.png'] // TODO: Update with actual image
+            },
+            unit_amount: 12000 // €120 in cents
+          },
+          quantity: 1
+        }],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        client_reference_id: userId,
+        customer_email: context.auth.token.email,
+        metadata: {
+          userId: userId,
+          productType: 'insurance'
+        }
+      };
+    }
+
+    // 4. Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log(`[createStripeCheckoutSession] Session created: ${session.id} for user ${userId} (${productType})`);
+
+    // 5. Return session ID to frontend
+    return {
+      sessionId: session.id,
+      url: session.url
+    };
+
+  } catch (error) {
+    console.error('[createStripeCheckoutSession] Error creating session:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to create checkout session: ${error.message}`
+    );
+  }
+});
+
 // ============================================================================
 // PUSH NOTIFICATIONS
 // ============================================================================
