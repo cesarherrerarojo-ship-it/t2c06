@@ -7,6 +7,18 @@ const axios = require('axios');
 admin.initializeApp();
 
 // ============================================================================
+// IMPORT: Insurance Auto-Capture Functions
+// ============================================================================
+const {
+  autoCaptureExpiringInsurance,
+  manualCaptureInsurance
+} = require('./insurance-auto-capture');
+
+// Re-export para que Firebase las detecte
+exports.autoCaptureExpiringInsurance = autoCaptureExpiringInsurance;
+exports.manualCaptureInsurance = manualCaptureInsurance;
+
+// ============================================================================
 // HELPER FUNCTIONS: Payment management
 // ============================================================================
 
