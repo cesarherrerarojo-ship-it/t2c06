@@ -14,6 +14,9 @@
   <!-- PayPal SDK -->
   <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&vault=true&intent=subscription"></script>
 
+  <!-- Stripe SDK -->
+  <script src="https://js.stripe.com/v3/"></script>
+
   <style>
     body {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
@@ -189,13 +192,51 @@
         </div>
       </div>
 
-      <!-- PayPal Button Container -->
-      <div id="paypal-button-container" class="mb-4"></div>
+      <!-- Dual Payment Options -->
+      <h3 class="text-xl font-bold text-center mb-6">
+        <i class="fas fa-credit-card mr-2"></i>
+        Elige tu método de pago
+      </h3>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+
+        <!-- PayPal Option -->
+        <div class="glass rounded-xl p-6">
+          <div class="text-center mb-4">
+            <i class="fab fa-paypal text-5xl text-blue-400 mb-2"></i>
+            <h4 class="text-lg font-bold">PayPal</h4>
+            <p class="text-slate-300 text-sm">Rápido y seguro</p>
+          </div>
+          <div id="paypal-button-container"></div>
+          <div class="text-center text-xs text-slate-400 mt-3">
+            <i class="fas fa-shield-alt mr-1"></i>
+            Protección del comprador PayPal
+          </div>
+        </div>
+
+        <!-- Stripe Option -->
+        <div class="glass rounded-xl p-6">
+          <div class="text-center mb-4">
+            <i class="far fa-credit-card text-5xl text-green-400 mb-2"></i>
+            <h4 class="text-lg font-bold">Tarjeta de Crédito/Débito</h4>
+            <p class="text-slate-300 text-sm">Visa, Mastercard, Amex</p>
+          </div>
+          <button id="stripe-checkout-button" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 shadow-lg">
+            <i class="fas fa-lock mr-2"></i>
+            Pago Seguro con Stripe
+          </button>
+          <div class="text-center text-xs text-slate-400 mt-3">
+            <i class="fas fa-shield-alt mr-1"></i>
+            Certificado PCI DSS Nivel 1
+          </div>
+        </div>
+
+      </div>
 
       <!-- Security Notice -->
       <div class="glass rounded-xl p-4 text-center text-sm text-slate-300">
         <i class="fas fa-lock mr-2"></i>
-        Pago seguro procesado por PayPal. Cancela en cualquier momento.
+        Pagos 100% seguros. Cancela en cualquier momento. Datos encriptados con SSL.
       </div>
     </div>
 
@@ -245,10 +286,17 @@
     import { auth, db } from './js/firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
     import { showToast } from './js/utils.js';
     import { loadTheme } from './js/theme.js';
 
+    // Initialize Firebase Functions
+    const functions = getFunctions();
+
     let currentUser = null;
+
+    // Stripe instance
+    const stripe = Stripe('YOUR_STRIPE_PUBLISHABLE_KEY'); // TODO: Reemplazar con tu Stripe Publishable Key
 
     // Check authentication
     onAuthStateChanged(auth, (user) => {
@@ -256,6 +304,7 @@
         currentUser = user;
         document.getElementById('loadingOverlay').classList.add('hidden');
         initPayPalButton();
+        initStripeButton();
       } else {
         // Redirect to login if not authenticated
         window.location.href = '/login.html';
@@ -302,6 +351,7 @@
               subscriptionStartDate: serverTimestamp(),
               subscriptionEndDate: subscriptionEndDate,
               subscriptionStatus: 'active',
+              paymentProvider: 'paypal', // ← NUEVO: Track payment method
               updatedAt: serverTimestamp()
             });
 
@@ -333,6 +383,55 @@
         }
 
       }).render('#paypal-button-container');
+    }
+
+    // Initialize Stripe Button
+    async function initStripeButton() {
+      const stripeButton = document.getElementById('stripe-checkout-button');
+
+      stripeButton.addEventListener('click', async () => {
+        try {
+          // Mostrar overlay de carga
+          document.getElementById('loadingOverlay').classList.remove('hidden');
+          stripeButton.disabled = true;
+
+          // Call Cloud Function to create Stripe Checkout Session
+          // TODO: Implement createStripeCheckoutSession Cloud Function
+          const createCheckoutSession = httpsCallable(functions, 'createStripeCheckoutSession');
+
+          const result = await createCheckoutSession({
+            userId: currentUser.uid,
+            productType: 'membership',
+            successUrl: window.location.origin + '/webapp/suscripcion.html?success=true',
+            cancelUrl: window.location.origin + '/webapp/suscripcion.html?canceled=true'
+          });
+
+          const { sessionId } = result.data;
+
+          // Redirect to Stripe Checkout
+          const { error } = await stripe.redirectToCheckout({
+            sessionId: sessionId
+          });
+
+          if (error) {
+            throw error;
+          }
+
+        } catch (error) {
+          console.error('Stripe error:', error);
+          document.getElementById('loadingOverlay').classList.add('hidden');
+          stripeButton.disabled = false;
+          showError('Error al procesar el pago con Stripe. Por favor intenta nuevamente.');
+        }
+      });
+
+      // Check for success/cancel in URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        document.getElementById('successModal').classList.remove('hidden');
+      } else if (urlParams.get('canceled') === 'true') {
+        showError('Cancelaste el proceso de pago. Tu membresía no fue activada.');
+      }
     }
 
     // Show error modal
