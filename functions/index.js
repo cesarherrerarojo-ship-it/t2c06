@@ -2,6 +2,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const stripe = require('stripe')(functions.config().stripe?.secret_key || process.env.STRIPE_SECRET_KEY);
+const axios = require('axios');
 
 admin.initializeApp();
 
@@ -942,6 +943,412 @@ async function handlePayPalPaymentFailed(sale) {
 
   console.log(`[handlePayPalPaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
+
+// ============================================================================
+// PAYPAL AUTHORIZATION MANAGEMENT (Insurance Hold/Capture/Void)
+// ============================================================================
+
+/**
+ * Helper: Obtener access token de PayPal
+ */
+async function getPayPalAccessToken() {
+  const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+  const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
+  const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
+
+  if (!paypalClientId || !paypalSecret) {
+    throw new Error('PayPal credentials not configured');
+  }
+
+  const authUrl = paypalMode === 'live'
+    ? 'https://api-m.paypal.com/v1/oauth2/token'
+    : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+
+  const auth = Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64');
+
+  const response = await axios.post(authUrl, 'grant_type=client_credentials', {
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  });
+
+  return response.data.access_token;
+}
+
+/**
+ * Callable Function: Capturar autorización de seguro anti-plantón
+ * Se llama cuando un usuario planta a otro en una cita
+ *
+ * @param {object} data - { authorizationId: string, appointmentId: string, reason: string }
+ * @param {object} context - Firebase auth context
+ */
+exports.captureInsuranceAuthorization = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to capture insurance authorization'
+    );
+  }
+
+  const { authorizationId, appointmentId, victimUserId } = data;
+
+  if (!authorizationId || !appointmentId || !victimUserId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'authorizationId, appointmentId, and victimUserId are required'
+    );
+  }
+
+  try {
+    console.log(`[captureInsuranceAuthorization] Starting capture for authorization ${authorizationId}`);
+
+    const db = admin.firestore();
+
+    // 2. Verificar que la cita existe y el usuario es parte de ella
+    const appointmentDoc = await db.collection('appointments').doc(appointmentId).get();
+    if (!appointmentDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Appointment not found');
+    }
+
+    const appointment = appointmentDoc.data();
+    const participants = appointment.participants || [];
+
+    // Verificar que victimUserId es parte de la cita
+    if (!participants.includes(victimUserId)) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Victim user is not part of this appointment'
+      );
+    }
+
+    // 3. Obtener access token de PayPal
+    const accessToken = await getPayPalAccessToken();
+
+    // 4. Capturar la autorización
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const captureUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}/capture`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}/capture`;
+
+    const captureResponse = await axios.post(
+      captureUrl,
+      {
+        final_capture: true, // Esta es la captura final
+        note_to_payer: 'Compensación por plantón en TuCitaSegura',
+        soft_descriptor: 'TCS-PLANTON'
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const captureData = captureResponse.data;
+    console.log(`[captureInsuranceAuthorization] Capture successful:`, captureData.id);
+
+    // 5. Obtener el usuario que plantó (quien tiene la autorización)
+    const ghosterId = participants.find(uid => uid !== victimUserId);
+
+    // 6. Actualizar Firestore - Usuario que plantó
+    await db.collection('users').doc(ghosterId).update({
+      insuranceStatus: 'captured',
+      insuranceCaptureId: captureData.id,
+      insuranceCaptureDate: admin.firestore.FieldValue.serverTimestamp(),
+      insuranceCaptureReason: 'no_show',
+      insuranceCaptureAppointmentId: appointmentId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 7. Registrar la captura en colección de insurance_captures
+    await db.collection('insurance_captures').add({
+      ghosterId: ghosterId,
+      victimId: victimUserId,
+      appointmentId: appointmentId,
+      authorizationId: authorizationId,
+      captureId: captureData.id,
+      amount: 120,
+      currency: 'EUR',
+      status: captureData.status,
+      reason: 'no_show',
+      capturedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paypalResponse: captureData
+    });
+
+    // 8. Actualizar el appointment con la información de captura
+    await db.collection('appointments').doc(appointmentId).update({
+      insuranceCaptured: true,
+      insuranceCaptureId: captureData.id,
+      ghosterId: ghosterId,
+      victimId: victimUserId,
+      capturedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 9. Notificar a ambos usuarios
+    await createUserNotification(ghosterId, {
+      title: 'Cargo por plantón',
+      message: 'Se han cobrado €120 de tu retención por no asistir a la cita confirmada. Tu reputación ha sido afectada.',
+      type: 'warning',
+      actionUrl: `/webapp/cita-detalle.html?id=${appointmentId}`,
+      actionLabel: 'Ver detalles',
+      metadata: {
+        appointmentId,
+        captureId: captureData.id
+      }
+    });
+
+    await createUserNotification(victimUserId, {
+      title: 'Compensación recibida',
+      message: 'Tu cita no se presentó. Se ha procesado la compensación de €120 por el plantón.',
+      type: 'success',
+      actionUrl: `/webapp/cita-detalle.html?id=${appointmentId}`,
+      actionLabel: 'Ver detalles',
+      metadata: {
+        appointmentId,
+        captureId: captureData.id
+      }
+    });
+
+    console.log(`[captureInsuranceAuthorization] Completed successfully for appointment ${appointmentId}`);
+
+    return {
+      success: true,
+      captureId: captureData.id,
+      status: captureData.status,
+      amount: 120,
+      currency: 'EUR'
+    };
+
+  } catch (error) {
+    console.error(`[captureInsuranceAuthorization] Error:`, error.response?.data || error.message);
+
+    // Log del error
+    const db = admin.firestore();
+    await db.collection('payment_errors').add({
+      type: 'insurance_capture',
+      authorizationId,
+      appointmentId,
+      error: error.response?.data || error.message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to capture insurance authorization: ${error.response?.data?.message || error.message}`
+    );
+  }
+});
+
+/**
+ * Callable Function: Liberar (void) autorización de seguro anti-plantón
+ * Se llama cuando ambos usuarios llegan a la cita, o cuando se cancela la cuenta
+ *
+ * @param {object} data - { authorizationId: string, reason: 'successful_date' | 'account_cancelled' }
+ * @param {object} context - Firebase auth context
+ */
+exports.voidInsuranceAuthorization = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to void insurance authorization'
+    );
+  }
+
+  const { authorizationId, userId, reason } = data;
+
+  if (!authorizationId || !userId || !reason) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'authorizationId, userId, and reason are required'
+    );
+  }
+
+  // Validar que el reason es correcto
+  const validReasons = ['successful_date', 'account_cancelled', 'mutual_cancellation'];
+  if (!validReasons.includes(reason)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `reason must be one of: ${validReasons.join(', ')}`
+    );
+  }
+
+  try {
+    console.log(`[voidInsuranceAuthorization] Starting void for authorization ${authorizationId}, reason: ${reason}`);
+
+    const db = admin.firestore();
+
+    // 2. Verificar que el usuario existe y tiene esta autorización
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+
+    const userData = userDoc.data();
+    if (userData.insuranceAuthorizationId !== authorizationId) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Authorization ID does not match user record'
+      );
+    }
+
+    // 3. Obtener access token de PayPal
+    const accessToken = await getPayPalAccessToken();
+
+    // 4. Anular (void) la autorización
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const voidUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}/void`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}/void`;
+
+    const voidResponse = await axios.post(
+      voidUrl,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    console.log(`[voidInsuranceAuthorization] Void successful for authorization ${authorizationId}`);
+
+    // 5. Actualizar Firestore
+    await db.collection('users').doc(userId).update({
+      insuranceStatus: 'voided',
+      insuranceVoidDate: admin.firestore.FieldValue.serverTimestamp(),
+      insuranceVoidReason: reason,
+      hasAntiGhostingInsurance: false, // Ya no tiene seguro activo
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 6. Registrar el void en colección
+    await db.collection('insurance_voids').add({
+      userId: userId,
+      authorizationId: authorizationId,
+      reason: reason,
+      voidedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 7. Notificar al usuario
+    let notificationMessage = '';
+    if (reason === 'successful_date') {
+      notificationMessage = 'Tu cita fue exitosa. La retención de €120 permanece activa para futuras citas.';
+    } else if (reason === 'account_cancelled') {
+      notificationMessage = 'Tu cuenta ha sido cancelada y la retención de €120 ha sido liberada.';
+    } else if (reason === 'mutual_cancellation') {
+      notificationMessage = 'La cita fue cancelada de mutuo acuerdo. La retención permanece activa.';
+    }
+
+    await createUserNotification(userId, {
+      title: 'Retención de seguro actualizada',
+      message: notificationMessage,
+      type: 'info',
+      actionUrl: '/webapp/cuenta-pagos.html',
+      actionLabel: 'Ver estado de pago',
+      metadata: {
+        reason,
+        authorizationId
+      }
+    });
+
+    console.log(`[voidInsuranceAuthorization] Completed successfully for user ${userId}`);
+
+    return {
+      success: true,
+      status: 'voided',
+      reason: reason
+    };
+
+  } catch (error) {
+    console.error(`[voidInsuranceAuthorization] Error:`, error.response?.data || error.message);
+
+    // Si el error es que la autorización ya expiró (esto es normal después de 29 días)
+    if (error.response?.status === 422 || error.response?.data?.name === 'AUTHORIZATION_VOIDED') {
+      console.log(`[voidInsuranceAuthorization] Authorization already voided or expired - updating user record`);
+
+      const db = admin.firestore();
+      await db.collection('users').doc(userId).update({
+        insuranceStatus: 'expired',
+        insuranceVoidDate: admin.firestore.FieldValue.serverTimestamp(),
+        insuranceVoidReason: 'auto_expired',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return {
+        success: true,
+        status: 'expired',
+        message: 'Authorization already voided or expired'
+      };
+    }
+
+    // Log del error
+    const db = admin.firestore();
+    await db.collection('payment_errors').add({
+      type: 'insurance_void',
+      authorizationId,
+      userId,
+      error: error.response?.data || error.message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to void insurance authorization: ${error.response?.data?.message || error.message}`
+    );
+  }
+});
+
+/**
+ * Callable Function: Obtener estado de autorización desde PayPal
+ * Útil para verificar si la autorización sigue activa
+ */
+exports.getInsuranceAuthorizationStatus = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  }
+
+  const { authorizationId } = data;
+
+  if (!authorizationId) {
+    throw new functions.https.HttpsError('invalid-argument', 'authorizationId is required');
+  }
+
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const getUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}`;
+
+    const response = await axios.get(getUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    return {
+      success: true,
+      status: response.data.status,
+      amount: response.data.amount,
+      createTime: response.data.create_time,
+      expirationTime: response.data.expiration_time
+    };
+
+  } catch (error) {
+    console.error(`[getInsuranceAuthorizationStatus] Error:`, error.response?.data || error.message);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to get authorization status: ${error.response?.data?.message || error.message}`
+    );
+  }
+});
+
 // ============================================================================
 // PUSH NOTIFICATIONS
 // ============================================================================
