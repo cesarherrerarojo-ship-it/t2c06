@@ -1350,6 +1350,511 @@ exports.getInsuranceAuthorizationStatus = functions.https.onCall(async (data, co
 });
 
 // ============================================================================
+// AUDIT LOGGING SYSTEM
+// ============================================================================
+
+/**
+ * Crear entrada de audit log en Firestore
+ *
+ * Categories:
+ * - auth: Authentication events (login, logout, register, verify)
+ * - user_action: User actions (profile update, photo upload, settings)
+ * - security: Security events (SOS, blocks, reports, failed auth)
+ * - business: Business events (matches, messages, dates)
+ * - payment: Payment events (subscriptions, insurance, failures)
+ * - admin: Admin actions (bans, role changes, manual overrides)
+ * - system: System events (errors, rate limiting, anomalies)
+ *
+ * @param {string} userId - User ID (or 'system' for system events)
+ * @param {string} category - Event category (see above)
+ * @param {string} action - Action performed (e.g., 'login', 'profile_updated')
+ * @param {object} metadata - Additional event data
+ * @param {string} ipAddress - IP address (optional)
+ * @param {string} userAgent - User agent (optional)
+ */
+async function createAuditLog(userId, category, action, metadata = {}, ipAddress = null, userAgent = null) {
+  const db = admin.firestore();
+
+  const auditLog = {
+    userId: userId,
+    category: category,
+    action: action,
+    metadata: metadata,
+    ipAddress: ipAddress,
+    userAgent: userAgent,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    const docRef = await db.collection('audit_logs').add(auditLog);
+    console.log(`[createAuditLog] Log created: ${category}/${action} for user ${userId} (${docRef.id})`);
+    return docRef.id;
+  } catch (error) {
+    console.error(`[createAuditLog] Error creating audit log:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Callable Function: Crear audit log desde frontend
+ * Los usuarios pueden crear logs de sus propias acciones
+ * Admins pueden crear cualquier log
+ *
+ * @param {object} data - { category, action, metadata }
+ * @param {object} context - Firebase auth context
+ */
+exports.createAuditLog = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to create audit logs'
+    );
+  }
+
+  const { category, action, metadata = {}, targetUserId } = data;
+  const userId = context.auth.uid;
+  const isAdmin = context.auth.token.role === 'admin';
+
+  // 2. Validar categoría
+  const validCategories = ['auth', 'user_action', 'security', 'business', 'payment', 'admin', 'system'];
+  if (!validCategories.includes(category)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `category must be one of: ${validCategories.join(', ')}`
+    );
+  }
+
+  // 3. Validar acción
+  if (!action || typeof action !== 'string') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'action must be a non-empty string'
+    );
+  }
+
+  // 4. Restricciones de seguridad
+  // - Los usuarios normales solo pueden crear logs de sus propias acciones
+  // - Solo admins pueden crear logs de categorías: admin, system
+  // - Solo admins pueden crear logs para otros usuarios
+  if (!isAdmin) {
+    if (category === 'admin' || category === 'system') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only admins can create admin/system logs'
+      );
+    }
+
+    if (targetUserId && targetUserId !== userId) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Cannot create logs for other users'
+      );
+    }
+  }
+
+  // 5. Obtener IP y User Agent del contexto (si disponible)
+  const ipAddress = context.rawRequest?.ip || context.rawRequest?.headers?.['x-forwarded-for'] || null;
+  const userAgent = context.rawRequest?.headers?.['user-agent'] || null;
+
+  // 6. Crear el audit log
+  const logUserId = targetUserId || userId;
+
+  try {
+    const logId = await createAuditLog(
+      logUserId,
+      category,
+      action,
+      {
+        ...metadata,
+        createdBy: userId, // Quien creó el log (puede ser admin para otro usuario)
+        isAdminAction: isAdmin && targetUserId && targetUserId !== userId
+      },
+      ipAddress,
+      userAgent
+    );
+
+    return {
+      success: true,
+      logId: logId,
+      timestamp: Date.now()
+    };
+
+  } catch (error) {
+    console.error(`[createAuditLog] Error:`, error);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to create audit log: ${error.message}`
+    );
+  }
+});
+
+/**
+ * Callable Function: Obtener audit logs del usuario actual
+ * Los usuarios pueden ver sus propios logs
+ * Los admins pueden ver logs de cualquier usuario
+ *
+ * @param {object} data - { userId (opcional), category (opcional), limit, startAfter }
+ * @param {object} context - Firebase auth context
+ */
+exports.getUserAuditLogs = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to get audit logs'
+    );
+  }
+
+  const currentUserId = context.auth.uid;
+  const isAdmin = context.auth.token.role === 'admin';
+  const { userId, category, limit = 50, startAfter } = data;
+
+  // 2. Determinar qué usuario buscar
+  let targetUserId = userId || currentUserId;
+
+  // 3. Seguridad: Solo admins pueden ver logs de otros usuarios
+  if (!isAdmin && targetUserId !== currentUserId) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Cannot view audit logs of other users'
+    );
+  }
+
+  // 4. Validar límite
+  const validLimit = Math.min(Math.max(1, limit), 100); // Entre 1 y 100
+
+  try {
+    const db = admin.firestore();
+    let query = db.collection('audit_logs')
+      .where('userId', '==', targetUserId)
+      .orderBy('timestamp', 'desc')
+      .limit(validLimit);
+
+    // Filtrar por categoría si se especifica
+    if (category) {
+      query = query.where('category', '==', category);
+    }
+
+    // Paginación
+    if (startAfter) {
+      const startDoc = await db.collection('audit_logs').doc(startAfter).get();
+      if (startDoc.exists) {
+        query = query.startAfter(startDoc);
+      }
+    }
+
+    const snapshot = await query.get();
+
+    const logs = [];
+    snapshot.forEach(doc => {
+      logs.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    return {
+      success: true,
+      logs: logs,
+      count: logs.length,
+      hasMore: logs.length === validLimit
+    };
+
+  } catch (error) {
+    console.error(`[getUserAuditLogs] Error:`, error);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to get audit logs: ${error.message}`
+    );
+  }
+});
+
+/**
+ * Callable Function: Obtener estadísticas de audit logs (Admin only)
+ *
+ * @param {object} data - { startDate, endDate, category }
+ * @param {object} context - Firebase auth context
+ */
+exports.getAuditLogStats = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación y permisos de admin
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  }
+
+  if (context.auth.token.role !== 'admin') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Only admins can view audit log statistics'
+    );
+  }
+
+  const { startDate, endDate, category } = data;
+
+  try {
+    const db = admin.firestore();
+    let query = db.collection('audit_logs');
+
+    // Filtrar por fecha
+    if (startDate) {
+      query = query.where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(startDate)));
+    }
+    if (endDate) {
+      query = query.where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(endDate)));
+    }
+    if (category) {
+      query = query.where('category', '==', category);
+    }
+
+    const snapshot = await query.get();
+
+    // Calcular estadísticas
+    const stats = {
+      total: snapshot.size,
+      byCategory: {},
+      byAction: {},
+      byUser: {},
+      byHour: {}
+    };
+
+    snapshot.forEach(doc => {
+      const log = doc.data();
+
+      // Por categoría
+      stats.byCategory[log.category] = (stats.byCategory[log.category] || 0) + 1;
+
+      // Por acción
+      stats.byAction[log.action] = (stats.byAction[log.action] || 0) + 1;
+
+      // Por usuario
+      stats.byUser[log.userId] = (stats.byUser[log.userId] || 0) + 1;
+
+      // Por hora (para detectar patrones)
+      if (log.timestamp) {
+        const hour = new Date(log.timestamp.toDate()).getHours();
+        stats.byHour[hour] = (stats.byHour[hour] || 0) + 1;
+      }
+    });
+
+    return {
+      success: true,
+      stats: stats,
+      period: {
+        startDate: startDate || null,
+        endDate: endDate || null
+      }
+    };
+
+  } catch (error) {
+    console.error(`[getAuditLogStats] Error:`, error);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to get audit log stats: ${error.message}`
+    );
+  }
+});
+
+// ============================================================================
+// AUTOMATED AUDIT LOGGING - Firestore Triggers
+// ============================================================================
+
+/**
+ * Trigger: Log cuando se crea un usuario
+ */
+exports.onUserCreatedAudit = functions.firestore
+  .document('users/{userId}')
+  .onCreate(async (snap, context) => {
+    const userId = context.params.userId;
+    const userData = snap.data();
+
+    await createAuditLog(
+      userId,
+      'auth',
+      'user_registered',
+      {
+        email: userData.email,
+        gender: userData.gender,
+        userRole: userData.userRole,
+        registrationMethod: 'email'
+      }
+    );
+  });
+
+/**
+ * Trigger: Log cuando se actualiza un usuario
+ */
+exports.onUserUpdatedAudit = functions.firestore
+  .document('users/{userId}')
+  .onUpdate(async (change, context) => {
+    const userId = context.params.userId;
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Detectar qué cambió
+    const changes = {};
+    const criticalFields = [
+      'userRole', 'hasActiveSubscription', 'hasAntiGhostingInsurance',
+      'isConcierge', 'reputation', 'emailVerified'
+    ];
+
+    criticalFields.forEach(field => {
+      if (before[field] !== after[field]) {
+        changes[field] = {
+          before: before[field],
+          after: after[field]
+        };
+      }
+    });
+
+    // Solo crear log si hay cambios críticos
+    if (Object.keys(changes).length > 0) {
+      await createAuditLog(
+        userId,
+        'user_action',
+        'user_updated',
+        {
+          changes: changes,
+          updatedFields: Object.keys(changes)
+        }
+      );
+    }
+  });
+
+/**
+ * Trigger: Log cuando se crea un reporte
+ */
+exports.onReportCreatedAudit = functions.firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    const reportData = snap.data();
+
+    await createAuditLog(
+      reportData.reporterId,
+      'security',
+      'user_reported',
+      {
+        reportId: context.params.reportId,
+        reportedUserId: reportData.reportedUserId,
+        reason: reportData.reason,
+        category: reportData.category
+      }
+    );
+  });
+
+/**
+ * Trigger: Log cuando se activa SOS
+ */
+exports.onSOSCreatedAudit = functions.firestore
+  .document('sos_alerts/{alertId}')
+  .onCreate(async (snap, context) => {
+    const sosData = snap.data();
+
+    await createAuditLog(
+      sosData.userId,
+      'security',
+      'sos_activated',
+      {
+        alertId: context.params.alertId,
+        location: sosData.location,
+        reason: sosData.reason || 'emergency',
+        appointmentId: sosData.appointmentId || null
+      }
+    );
+  });
+
+/**
+ * Trigger: Log cuando se crea una suscripción
+ */
+exports.onSubscriptionCreatedAudit = functions.firestore
+  .document('subscriptions/{subscriptionId}')
+  .onCreate(async (snap, context) => {
+    const subData = snap.data();
+
+    await createAuditLog(
+      subData.userId,
+      'payment',
+      'subscription_created',
+      {
+        subscriptionId: context.params.subscriptionId,
+        plan: subData.plan,
+        amount: subData.amount,
+        currency: subData.currency,
+        status: subData.status
+      }
+    );
+  });
+
+/**
+ * Trigger: Log cuando se crea un match
+ */
+exports.onMatchCreatedAudit = functions.firestore
+  .document('matches/{matchId}')
+  .onCreate(async (snap, context) => {
+    const matchData = snap.data();
+
+    await createAuditLog(
+      matchData.senderId,
+      'business',
+      'match_requested',
+      {
+        matchId: context.params.matchId,
+        receiverId: matchData.receiverId,
+        status: matchData.status
+      }
+    );
+  });
+
+/**
+ * Trigger: Log cuando se acepta un match
+ */
+exports.onMatchAcceptedAudit = functions.firestore
+  .document('matches/{matchId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Si el status cambió a 'accepted'
+    if (before.status !== 'accepted' && after.status === 'accepted') {
+      await createAuditLog(
+        after.receiverId,
+        'business',
+        'match_accepted',
+        {
+          matchId: context.params.matchId,
+          senderId: after.senderId,
+          receiverId: after.receiverId
+        }
+      );
+    }
+  });
+
+/**
+ * Trigger: Log cuando se crea una cita
+ */
+exports.onAppointmentCreatedAudit = functions.firestore
+  .document('appointments/{appointmentId}')
+  .onCreate(async (snap, context) => {
+    const appointmentData = snap.data();
+
+    // Crear log para ambos participantes
+    for (const userId of appointmentData.participants) {
+      await createAuditLog(
+        userId,
+        'business',
+        'appointment_created',
+        {
+          appointmentId: context.params.appointmentId,
+          date: appointmentData.date,
+          time: appointmentData.time,
+          place: appointmentData.place,
+          status: appointmentData.status
+        }
+      );
+    }
+  });
+
+// ============================================================================
 // PUSH NOTIFICATIONS
 // ============================================================================
 // Import notification functions from notifications.js

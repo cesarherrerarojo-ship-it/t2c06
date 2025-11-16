@@ -498,6 +498,7 @@
     import { logger } from './js/logger.js';
     import { setupGlobalErrorHandling } from './js/error-handler.js';
     import { initializeNotifications } from './js/notifications.js';
+    import auditLogger from './js/audit-logger.js';
 
     // Setup global error handling
     setupGlobalErrorHandling();
@@ -861,6 +862,18 @@
         });
 
         logger.info('Profile updated successfully');
+
+        // Log audit event for profile update
+        const changedFields = [];
+        if (currentUserData.alias !== alias) changedFields.push('alias');
+        if (currentUserData.bio !== bio) changedFields.push('bio');
+        if (currentUserData.theme !== selectedTheme) changedFields.push('theme');
+        if (photoFile) changedFields.push('photoURL');
+        if (galleryFiles.some(f => f !== null)) changedFields.push('galleryPhotos');
+
+        auditLogger.logProfileUpdate(changedFields).catch(err => {
+          logger.warn('Failed to create audit log:', err);
+        });
 
         // Show success modal
         document.getElementById('successModal').classList.remove('hidden');

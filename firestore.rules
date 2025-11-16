@@ -363,7 +363,28 @@ service cloud.firestore {
       allow delete: if isAuthed() && uid() == userId;
     }
 
-    // ============ ADMIN LOGS ============
+    // ============ AUDIT LOGS ============
+    // Comprehensive audit logging system for tracking all important events
+    // Categories: auth, user_action, security, business, payment, admin, system
+    match /audit_logs/{logId} {
+      // Lectura:
+      // - Admins pueden ver todos los logs
+      // - Usuarios pueden ver sus propios logs (excepto system/admin logs)
+      allow read: if isAdmin() ||
+                     (isAuthed() &&
+                      resource.data.userId == uid() &&
+                      resource.data.category in ['auth', 'user_action', 'business', 'payment']);
+
+      // Creación:
+      // - Solo Cloud Functions (usando Admin SDK, bypass rules)
+      // - O admin para logs manuales
+      allow create: if isAdmin();
+
+      // Inmutables - no se pueden modificar ni borrar
+      allow update, delete: if false;
+    }
+
+    // ============ ADMIN LOGS (Legacy - Deprecated, use audit_logs) ============
     match /admin_logs/{logId} {
       // Solo lectura para admins
       allow read: if isAdmin();
