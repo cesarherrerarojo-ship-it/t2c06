@@ -1,10 +1,10 @@
 // audit-logger.js - Frontend Audit Logging Utility
 // Integrates with Firebase Cloud Functions for comprehensive audit tracking
 
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import app from './firebase-config.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
-const functions = getFunctions();
+const functions = getFunctions(app);
 
 /**
  * Event Categories (must match Cloud Function validation)
