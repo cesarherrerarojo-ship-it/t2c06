@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Audit Logger - TuCitaSegura</title>
+
+  <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="./css/output.css">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .log-entry {
+      background: rgba(255, 255, 255, 0.05);
+      border-left: 3px solid #667eea;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.25rem;
+    }
+
+    .success {
+      border-left-color: #10b981;
+    }
+
+    .error {
+      border-left-color: #ef4444;
+    }
+
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      color: #fff;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-6xl mx-auto">
+    <div class="glass rounded-2xl p-8 text-white">
+      <h1 class="text-4xl font-bold mb-2">
+        <i class="fas fa-clipboard-check mr-2"></i>
+        Audit Logger Test Suite
+      </h1>
+      <p class="text-white/70 mb-6">Test and verify the audit logging system</p>
+
+      <!-- Authentication Status -->
+      <div id="authStatus" class="mb-6 p-4 rounded-lg bg-yellow-500/20">
+        <i class="fas fa-spinner fa-spin mr-2"></i>
+        Checking authentication...
+      </div>
+
+      <!-- Test Actions -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="glass rounded-xl p-6">
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-vial mr-2"></i>
+            Test Actions
+          </h2>
+
+          <div class="space-y-3">
+            <button onclick="testAuth()" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-sign-in-alt mr-2"></i>
+              Test Auth Event
+            </button>
+
+            <button onclick="testUserAction()" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-user-edit mr-2"></i>
+              Test User Action
+            </button>
+
+            <button onclick="testSecurity()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-shield-alt mr-2"></i>
+              Test Security Event
+            </button>
+
+            <button onclick="testBusiness()" class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-handshake mr-2"></i>
+              Test Business Event
+            </button>
+
+            <button onclick="testPayment()" class="w-full bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-credit-card mr-2"></i>
+              Test Payment Event
+            </button>
+
+            <button onclick="testAll()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition font-bold">
+              <i class="fas fa-rocket mr-2"></i>
+              Run All Tests
+            </button>
+          </div>
+        </div>
+
+        <div class="glass rounded-xl p-6">
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-search mr-2"></i>
+            Query Actions
+          </h2>
+
+          <div class="space-y-3">
+            <button onclick="viewMyLogs()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-list mr-2"></i>
+              View My Logs (Last 20)
+            </button>
+
+            <button onclick="viewAuthLogs()" class="w-full bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-filter mr-2"></i>
+              Filter: Auth Logs
+            </button>
+
+            <button onclick="viewSecurityLogs()" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-filter mr-2"></i>
+              Filter: Security Logs
+            </button>
+
+            <button onclick="viewStats()" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-chart-bar mr-2"></i>
+              View Statistics (Admin Only)
+            </button>
+
+            <button onclick="clearResults()" class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+              <i class="fas fa-eraser mr-2"></i>
+              Clear Results
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="glass rounded-xl p-6">
+        <h2 class="text-xl font-bold mb-4">
+          <i class="fas fa-terminal mr-2"></i>
+          Results
+        </h2>
+
+        <div id="results" class="space-y-2">
+          <p class="text-white/50">No results yet. Run a test or query above.</p>
+        </div>
+      </div>
+
+      <!-- Back Button -->
+      <div class="mt-6">
+        <a href="./perfil.html" class="inline-block bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-lg transition">
+          <i class="fas fa-arrow-left mr-2"></i>
+          Back to Profile
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth } from './js/firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import auditLogger from './js/audit-logger.js';
+
+    let currentUser = null;
+
+    // Check authentication
+    onAuthStateChanged(auth, (user) => {
+      const authStatus = document.getElementById('authStatus');
+      if (user) {
+        currentUser = user;
+        authStatus.innerHTML = `
+          <i class="fas fa-check-circle mr-2"></i>
+          Authenticated as: <strong>${user.email}</strong>
+        `;
+        authStatus.className = 'mb-6 p-4 rounded-lg bg-green-500/20';
+      } else {
+        authStatus.innerHTML = `
+          <i class="fas fa-exclamation-triangle mr-2"></i>
+          Not authenticated. <a href="../index.html" class="underline">Please login</a>
+        `;
+        authStatus.className = 'mb-6 p-4 rounded-lg bg-red-500/20';
+      }
+    });
+
+    // Helper: Add result
+    function addResult(message, type = 'info') {
+      const results = document.getElementById('results');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <span class="text-white/50 text-sm">[${timestamp}]</span>
+            <div class="mt-1">${message}</div>
+          </div>
+          <i class="fas fa-${type === 'success' ? 'check-circle text-green-400' : type === 'error' ? 'times-circle text-red-400' : 'info-circle text-blue-400'} ml-2"></i>
+        </div>
+      `;
+
+      results.insertBefore(entry, results.firstChild);
+    }
+
+    // Helper: Add JSON result
+    function addJSONResult(title, data) {
+      const results = document.getElementById('results');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `
+        <div>
+          <span class="text-white/50 text-sm">[${timestamp}]</span>
+          <strong class="ml-2">${title}</strong>
+          <pre class="mt-2">${JSON.stringify(data, null, 2)}</pre>
+        </div>
+      `;
+
+      results.insertBefore(entry, results.firstChild);
+    }
+
+    // Test: Auth Event
+    window.testAuth = async function() {
+      try {
+        addResult('Creating auth audit log...', 'info');
+        const result = await auditLogger.logAuth('test_login', {
+          method: 'test',
+          device: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        });
+        addResult(`✅ Auth log created successfully!`, 'success');
+        addJSONResult('Auth Log Result', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Test error:', error);
+      }
+    };
+
+    // Test: User Action
+    window.testUserAction = async function() {
+      try {
+        addResult('Creating user action audit log...', 'info');
+        const result = await auditLogger.logProfileUpdate(['alias', 'bio', 'theme']);
+        addResult(`✅ User action log created successfully!`, 'success');
+        addJSONResult('User Action Log Result', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Test error:', error);
+      }
+    };
+
+    // Test: Security Event
+    window.testSecurity = async function() {
+      try {
+        addResult('Creating security audit log...', 'info');
+        const result = await auditLogger.logSecurity('test_security_event', {
+          type: 'test',
+          severity: 'low',
+          timestamp: new Date().toISOString()
+        });
+        addResult(`✅ Security log created successfully!`, 'success');
+        addJSONResult('Security Log Result', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Test error:', error);
+      }
+    };
+
+    // Test: Business Event
+    window.testBusiness = async function() {
+      try {
+        addResult('Creating business audit log...', 'info');
+        const result = await auditLogger.logMatchRequest('test_user_123', 'test_match_456');
+        addResult(`✅ Business log created successfully!`, 'success');
+        addJSONResult('Business Log Result', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Test error:', error);
+      }
+    };
+
+    // Test: Payment Event
+    window.testPayment = async function() {
+      try {
+        addResult('Creating payment audit log...', 'info');
+        const result = await auditLogger.logPayment('test_payment_event', {
+          amount: 29.99,
+          currency: 'EUR',
+          paymentId: 'test_' + Date.now(),
+          timestamp: new Date().toISOString()
+        });
+        addResult(`✅ Payment log created successfully!`, 'success');
+        addJSONResult('Payment Log Result', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Test error:', error);
+      }
+    };
+
+    // Test: All
+    window.testAll = async function() {
+      addResult('🚀 Running all tests...', 'info');
+      await testAuth();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testUserAction();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testSecurity();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testBusiness();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testPayment();
+      addResult('✅ All tests completed!', 'success');
+    };
+
+    // View My Logs
+    window.viewMyLogs = async function() {
+      try {
+        addResult('Fetching your audit logs...', 'info');
+        const result = await auditLogger.getLogs({ limit: 20 });
+        addResult(`✅ Retrieved ${result.count} logs`, 'success');
+        addJSONResult(`Your Audit Logs (${result.count} entries)`, result.logs);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Query error:', error);
+      }
+    };
+
+    // View Auth Logs
+    window.viewAuthLogs = async function() {
+      try {
+        addResult('Fetching auth logs...', 'info');
+        const result = await auditLogger.getLogs({ category: 'auth', limit: 20 });
+        addResult(`✅ Retrieved ${result.count} auth logs`, 'success');
+        addJSONResult(`Auth Logs (${result.count} entries)`, result.logs);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Query error:', error);
+      }
+    };
+
+    // View Security Logs
+    window.viewSecurityLogs = async function() {
+      try {
+        addResult('Fetching security logs...', 'info');
+        const result = await auditLogger.getLogs({ category: 'security', limit: 20 });
+        addResult(`✅ Retrieved ${result.count} security logs`, 'success');
+        addJSONResult(`Security Logs (${result.count} entries)`, result.logs);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Query error:', error);
+      }
+    };
+
+    // View Stats (Admin Only)
+    window.viewStats = async function() {
+      try {
+        addResult('Fetching audit log statistics (Admin only)...', 'info');
+        const result = await auditLogger.getStats({
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
+          endDate: new Date().toISOString()
+        });
+        addResult(`✅ Retrieved statistics`, 'success');
+        addJSONResult('Audit Log Statistics (Last 30 Days)', result);
+      } catch (error) {
+        addResult(`❌ Error: ${error.message}`, 'error');
+        console.error('Stats error:', error);
+      }
+    };
+
+    // Clear Results
+    window.clearResults = function() {
+      document.getElementById('results').innerHTML = '<p class="text-white/50">No results yet. Run a test or query above.</p>';
+    };
+
+    // Make auditLogger available in console for manual testing
+    window.auditLogger = auditLogger;
+    console.log('✅ Audit Logger Test Suite loaded');
+    console.log('💡 Tip: Use window.auditLogger in console for manual testing');
+  </script>
+</body>
+</html>
