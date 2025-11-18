@@ -1,7 +1,10 @@
 /**
  * Sistema de protección de rutas para TuCitaSegura
  * Verifica que el usuario tenga email verificado y perfil completado
+ * Integrado con backend FastAPI
  */
+
+import { apiService, handleAPIError } from './api-service.js';
 
 class AuthGuard {
     constructor() {
@@ -27,6 +30,12 @@ class AuthGuard {
                 return false;
             }
 
+            // Verificar backend auth
+            const backendAuth = await this.checkBackendAuth();
+            if (!backendAuth) {
+                return false;
+            }
+
             // Verificar perfil completado
             const profileComplete = await this.checkProfileComplete(user.uid);
             if (!profileComplete) {
@@ -40,6 +49,38 @@ class AuthGuard {
             console.error('Error verificando autenticación:', error);
             this.redirectToLogin();
             return false;
+        }
+    }
+
+    /**
+     * Verifica autenticación con backend
+     */
+    async checkBackendAuth() {
+        try {
+            const token = await AuthGuard.getAuthToken();
+            apiService.setToken(token);
+            
+            // Verificar conexión con backend
+            const isAvailable = await apiService.isBackendAvailable();
+            if (!isAvailable) {
+                console.warn('Backend no disponible, usando solo Firebase');
+                return true; // Permitir acceso con Firebase solo
+            }
+
+            // Verificar estado de autenticación en backend
+            const authStatus = await apiService.checkAuthStatus();
+            console.log('Backend auth status:', authStatus);
+            
+            return true;
+            
+        } catch (error) {
+            if (error.message.includes('403')) {
+                console.error('Backend auth failed - access denied');
+                return false;
+            }
+            
+            console.warn('Backend auth check failed, continuing with Firebase:', error);
+            return true; // Fallback a Firebase
         }
     }
 

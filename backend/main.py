@@ -116,6 +116,265 @@ def require_verified_email(current_user: dict = Depends(verify_firebase_token)) 
                 status_code=status.HTTP_403_FORBIDDEN, 
                 detail="Email no verificado. Por favor verifica tu email antes de continuar."
             )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in auth status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting auth status"
+        )
+
+
+def require_verified_and_complete(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica tanto el email verificado como el perfil completado.
+    Combina ambas verificaciones en una sola dependencia.
+    """
+    # Primero verificar email
+    verified_user = require_verified_email(current_user)
+    
+    # Luego verificar perfil completado
+    return require_complete_profile(verified_user)
+
+
+# ========== User Management Endpoints ==========
+
+@app.get("/api/v1/users/me")
+async def get_current_user(current_user: dict = Depends(require_verified_email)):
+    """
+    Get current user profile
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        user_doc = db.collection('users').document(current_user["uid"]).get()
+        if not user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        
+        user_data = user_doc.to_dict()
+        
+        # Get Firebase Auth data
+        user_record = firebase_auth.get_user(current_user["uid"])
+        
+        return {
+            "uid": current_user["uid"],
+            "email": user_record.email,
+            "email_verified": user_record.email_verified,
+            "alias": user_data.get('alias'),
+            "birth_date": user_data.get('birth_date'),
+            "gender": user_data.get('gender'),
+            "city": user_data.get('city'),
+            "profession": user_data.get('profession'),
+            "bio": user_data.get('bio'),
+            "photos": user_data.get('photos', []),
+            "preferences": user_data.get('preferences', {}),
+            "has_active_subscription": user_data.get('hasActiveSubscription', False),
+            "subscription_status": user_data.get('subscriptionStatus', 'inactive'),
+            "has_anti_ghosting_insurance": user_data.get('hasAntiGhostingInsurance', False),
+            "created_at": user_data.get('createdAt'),
+            "updated_at": user_data.get('updatedAt')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting user profile"
+        )
+
+
+@app.put("/api/v1/users/me")
+async def update_current_user(user_data: dict, current_user: dict = Depends(require_verified_and_complete)):
+    """
+    Update current user profile
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        # Validate required fields if provided
+        if 'bio' in user_data:
+            word_count = len(user_data['bio'].split())
+            if word_count < 120:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Bio must be at least 120 words"
+                )
+        
+        if 'photos' in user_data and len(user_data['photos']) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Profile must have at least 3 photos"
+            )
+        
+        # Update user data
+        update_data = {
+            **user_data,
+            'updatedAt': firestore.SERVER_TIMESTAMP
+        }
+        
+        db.collection('users').document(current_user["uid"]).update(update_data)
+        
+        return {
+            "success": True,
+            "message": "Profile updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating user profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating user profile"
+        )
+
+
+# ========== Membership Management Endpoints ==========
+
+@app.get("/api/v1/membership/status")
+async def get_membership_status(current_user: dict = Depends(require_verified_and_complete)):
+    """
+    Get detailed membership status
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        user_doc = db.collection('users').document(current_user["uid"]).get()
+        if not user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user_data = user_doc.to_dict()
+        
+        return {
+            "has_active_membership": user_data.get('hasActiveSubscription', False),
+            "subscription_status": user_data.get('subscriptionStatus', 'inactive'),
+            "subscription_id": user_data.get('subscriptionId'),
+            "subscription_start_date": user_data.get('subscriptionStartDate'),
+            "subscription_end_date": user_data.get('subscriptionEndDate'),
+            "has_anti_ghosting_insurance": user_data.get('hasAntiGhostingInsurance', False),
+            "insurance_purchase_date": user_data.get('insurancePurchaseDate'),
+            "insurance_amount": user_data.get('insuranceAmount'),
+            "can_access_premium_features": user_data.get('hasActiveSubscription', False),
+            "details": "Membership status retrieved successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting membership status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting membership status"
+        )
+
+
+@app.get("/api/v1/membership/plans")
+async def get_membership_plans():
+    """
+    Get available membership plans
+    """
+    return {
+        "plans": [
+            {
+                "id": "monthly_basic",
+                "name": "Membresía Premium Mensual",
+                "description": "Acceso completo a todas las funciones premium",
+                "price": 29.99,
+                "currency": "EUR",
+                "interval": "month",
+                "features": [
+                    "Chat ilimitado",
+                    "Propuestas de citas ilimitadas",
+                    "Búsqueda avanzada de usuarios",
+                    "Ver quién te dio like",
+                    "Video llamadas ilimitadas",
+                    "Perfil destacado",
+                    "Matchmaking personalizado con IA",
+                    "Soporte prioritario",
+                    "Acceso a eventos VIP"
+                ],
+                "popular": True
+            },
+            {
+                "id": "yearly_basic",
+                "name": "Membresía Premium Anual",
+                "description": "Ahorra 40% con la suscripción anual",
+                "price": 215.92,
+                "currency": "EUR",
+                "interval": "year",
+                "features": [
+                    "Todas las características mensuales",
+                    "Ahorro de 40%",
+                    "2 meses gratis",
+                    "Acceso prioritario a nuevas funciones",
+                    "Regalo mensual de créditos para funciones premium"
+                ],
+                "popular": False,
+                "savings": "40%"
+            }
+        ]
+    }
+
+
+@app.post("/api/v1/membership/subscribe")
+async def create_subscription(subscription_data: dict, current_user: dict = Depends(require_verified_and_complete)):
+    """
+    Create a new subscription (this will call Firebase Cloud Functions)
+    """
+    try:
+        # This endpoint is a proxy to Firebase Cloud Functions
+        # The actual subscription creation happens in the frontend via Firebase Functions
+        return {
+            "success": True,
+            "message": "Please use Firebase Cloud Functions to create subscription",
+            "instructions": {
+                "function": "createStripeSubscription",
+                "provider": "stripe",
+                "price_id": subscription_data.get('price_id', 'price_monthly')
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error creating subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error creating subscription"
+        )
+
+
+@app.post("/api/v1/membership/cancel")
+async def cancel_subscription(current_user: dict = Depends(require_verified_and_complete)):
+    """
+    Cancel current subscription
+    """
+    try:
+        # This is a proxy to Firebase Cloud Functions
+        return {
+            "success": True,
+            "message": "Please use Firebase Cloud Functions to cancel subscription",
+            "instructions": {
+                "function": "cancelStripeSubscription",
+                "provider": "stripe"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error canceling subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error canceling subscription"
+        )
         
         return current_user
     except Exception as e:
@@ -319,6 +578,149 @@ async def health_check():
             "ml": "loaded",
         }
     )
+
+
+# ========== Authentication Endpoints ==========
+
+@app.get("/api/v1/auth/status")
+async def auth_status(current_user: dict = Depends(verify_firebase_token)):
+    """
+    Get current authentication status
+    """
+    try:
+        # Get user data from Firebase Auth
+        user_record = firebase_auth.get_user(current_user["uid"])
+        
+        # Get user profile from Firestore
+        from firebase_admin import firestore
+        db = firestore.client()
+        user_doc = db.collection('users').document(current_user["uid"]).get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
+        
+        return {
+            "uid": current_user["uid"],
+            "email": user_record.email,
+            "email_verified": user_record.email_verified,
+            "profile_complete": bool(user_data.get('alias') and user_data.get('bio') and len(user_data.get('photos', [])) >= 3),
+            "has_active_subscription": user_data.get('hasActiveSubscription', False),
+            "subscription_status": user_data.get('subscriptionStatus', 'inactive'),
+            "created_at": user_record.user_metadata.creation_timestamp,
+            "last_login": user_record.user_metadata.last_sign_in_timestamp
+        }
+    except Exception as e:
+        logger.error(f"Error getting auth status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting authentication status"
+        )
+
+
+@app.get("/api/v1/auth/verify-email")
+async def verify_email_status(current_user: dict = Depends(verify_firebase_token)):
+    """
+    Check if user email is verified
+    """
+    try:
+        user_record = firebase_auth.get_user(current_user["uid"])
+        return {
+            "email_verified": user_record.email_verified,
+            "email": user_record.email
+        }
+    except Exception as e:
+        logger.error(f"Error checking email verification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error checking email verification"
+        )
+
+
+@app.get("/api/v1/auth/profile-complete")
+async def profile_complete_status(current_user: dict = Depends(verify_firebase_token)):
+    """
+    Check if user profile is complete
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        user_doc = db.collection('users').document(current_user["uid"]).get()
+        if not user_doc.exists:
+            return {
+                "profile_complete": False,
+                "missing_fields": ["profile"],
+                "details": "User profile not found"
+            }
+        
+        user_data = user_doc.to_dict()
+        
+        # Check required fields
+        required_fields = ['alias', 'birth_date', 'gender', 'city', 'profession', 'bio']
+        missing_fields = []
+        
+        for field in required_fields:
+            if not user_data.get(field):
+                missing_fields.append(field)
+        
+        # Check bio length
+        if user_data.get('bio'):
+            bio_word_count = len(user_data['bio'].split())
+            if bio_word_count < 120:
+                missing_fields.append('bio_min_words')
+        
+        # Check photos
+        photos = user_data.get('photos', [])
+        if len(photos) < 3:
+            missing_fields.append('min_photos')
+        
+        return {
+            "profile_complete": len(missing_fields) == 0,
+            "missing_fields": missing_fields,
+            "details": f"Missing fields: {', '.join(missing_fields)}" if missing_fields else "Profile is complete"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking profile completion: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error checking profile completion"
+        )
+
+
+@app.get("/api/v1/auth/membership-status")
+async def membership_status(current_user: dict = Depends(verify_firebase_token)):
+    """
+    Check user membership status
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        user_doc = db.collection('users').document(current_user["uid"]).get()
+        if not user_doc.exists:
+            return {
+                "has_active_membership": False,
+                "subscription_status": "inactive",
+                "details": "User not found"
+            }
+        
+        user_data = user_doc.to_dict()
+        
+        return {
+            "has_active_membership": user_data.get('hasActiveSubscription', False),
+            "subscription_status": user_data.get('subscriptionStatus', 'inactive'),
+            "subscription_id": user_data.get('subscriptionId'),
+            "subscription_start_date": user_data.get('subscriptionStartDate'),
+            "subscription_end_date": user_data.get('subscriptionEndDate'),
+            "has_anti_ghosting_insurance": user_data.get('hasAntiGhostingInsurance', False),
+            "details": "Membership status retrieved successfully"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking membership status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error checking membership status"
+        )
 
 
 # ========== Machine Learning Endpoints ==========
