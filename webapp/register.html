@@ -249,8 +249,11 @@
 
   <!-- Firebase SDK -->
   <script type="module">
+    import './js/firebase-appcheck.js';
     import { auth, db } from './js/firebase-config.js';
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import { logger } from './js/logger.js';
+    import { handleFirebaseNetworkError, showNetworkError, retryOperation } from './js/network-error-handler.js';
+    import { isDemoMode, getDemoUser, initializeDemoMode } from './js/demo-mode.js';
     import {
       createUserWithEmailAndPassword,
       sendEmailVerification
@@ -260,7 +263,6 @@
       setDoc,
       serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-    import { logger } from './js/logger.js';
     import { setupGlobalErrorHandling } from './js/error-handler.js';
 
     // Setup global error handling
@@ -487,26 +489,87 @@
       } catch (error) {
         logger.error('Registration error:', error);
 
-        let errorMessage = 'Error al crear la cuenta';
+        // Handle network errors with detailed information
+        if (error.code === 'auth/network-request-failed' || 
+            error.code === 'auth/internal-error' || 
+            error.code === 'auth/unavailable' || 
+            error.code === 'auth/timeout') {
+          
+          const errorInfo = handleFirebaseNetworkError(error, 'registro');
+          showNetworkError(errorInfo, showToast);
+          
+          // Log additional debugging information
+          console.error('[REGISTRATION NETWORK ERROR]', {
+            code: error.code,
+            hostname: location.hostname,
+            protocol: location.protocol,
+            online: navigator.onLine,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Offer demo mode for development/testing
+          if (errorInfo.isDomainIssue) {
+            // Automatically activate demo mode for domain issues
+            try {
+              console.log('🔄 Activando modo demo automáticamente...');
+              
+              // Demo mode registration (for testing only)
+              const demoUserId = 'demo_' + Date.now();
+              const demoUserData = {
+                uid: demoUserId,
+                email: email,
+                displayName: `${firstName} ${lastName}`,
+                role: 'user',
+                subscription: 'free',
+                createdAt: new Date().toISOString(),
+                isDemo: true,
+                demoMessage: 'Modo demo activado - dominio no autorizado en Firebase'
+              };
+              
+              // Store demo user data in localStorage for testing
+              localStorage.setItem('demoUser', JSON.stringify(demoUserData));
+              localStorage.setItem('demoToken', 'demo_token_' + Date.now());
+              localStorage.setItem('isDemoMode', 'true');
+              
+              showToast('✅ Modo demo activado automáticamente', 'success');
+              showToast('🎯 Cuenta demo creada exitosamente', 'info');
+              showToast('💡 Nota: Estás en modo demo - funcionalidad limitada', 'warning');
+              
+              // Redirect to demo dashboard
+              setTimeout(() => {
+                window.location.href = '/webapp/perfil.html?demo=true&auto=true';
+              }, 3000);
+              
+              return; // Exit early since we handled it
+            } catch (demoError) {
+              console.error('Demo mode error:', demoError);
+              showToast('❌ Error incluso en modo demo', 'error');
+            }
+          }
+          
+        } else {
+          // Handle other authentication errors
+          let errorMessage = 'Error al crear la cuenta';
 
-        switch (error.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = 'Este correo electrónico ya está registrado';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'Correo electrónico inválido';
-            break;
-          case 'auth/operation-not-allowed':
-            errorMessage = 'Registro no permitido. Contacta soporte';
-            break;
-          case 'auth/weak-password':
-            errorMessage = 'La contraseña es demasiado débil';
-            break;
-          default:
-            errorMessage = error.message;
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              errorMessage = 'Este correo electrónico ya está registrado';
+              break;
+            case 'auth/invalid-email':
+              errorMessage = 'Correo electrónico inválido';
+              break;
+            case 'auth/operation-not-allowed':
+              errorMessage = 'Registro no permitido. Contacta soporte';
+              break;
+            case 'auth/weak-password':
+              errorMessage = 'La contraseña es demasiado débil';
+              break;
+            default:
+              errorMessage = error.message;
+          }
+
+          showToast(errorMessage, 'error');
         }
-
-        showToast(errorMessage, 'error');
 
         // Re-enable button
         registerButton.disabled = false;
@@ -522,6 +585,9 @@
         }
       }
     });
+
+    // Initialize demo mode UI if active
+    initializeDemoMode();
   </script>
 
 </body>

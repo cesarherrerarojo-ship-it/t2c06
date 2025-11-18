@@ -523,6 +523,37 @@ await eventLogRef.set({
 });
 ```
 
+### Idempotencia y protección contra reintentos
+
+- Clave: `event.id` (Stripe y PayPal envían un identificador único por evento).
+- Registro: `webhook_events/<event.id>` en Firestore.
+- Flujo:
+  - Primera entrega: si no existe el documento, se procesa y se guarda `{ status: 'processed', timestamp: serverTimestamp }`.
+  - Entregas posteriores con el mismo `event.id`: se retorna `200` y se omite cualquier cambio de estado.
+- Monitoreo:
+  - Firebase Console → Firestore → colección `webhook_events`.
+  - Revisar campos como `status`, `timestamp` y opcionalmente `type`, `userId`.
+- Limpieza:
+  - Configurar TTL sobre `timestamp` o `createdAt` en Firestore, o usar Cloud Scheduler para eliminar documentos antiguos (p. ej., >30 días).
+- Pruebas:
+  - Ejecutar `npm test -- functions/test/webhooks.test.js`.
+  - Incluye casos de duplicados: Stripe `customer.subscription.created`, `payment_intent.succeeded`, `invoice.payment_failed`, PayPal `BILLING.SUBSCRIPTION.ACTIVATED`.
+
+#### Despliegue y retención de `webhook_events`
+
+- Despliegue de la función programada de limpieza:
+  - `firebase deploy --only functions:cleanupWebhookEvents`
+  - Verificar que aparece en `firebase functions:list` como tarea programada.
+- Retención recomendada:
+  - 30 días por defecto (configurable en código: const `retentionDays = 30`).
+  - Alternativa: política TTL nativa de Firestore sobre `processedAt` si no se desea mantener una función programada.
+- Operación de la limpieza:
+  - Borra documentos en `webhook_events` con `processedAt` anterior al umbral.
+  - Elimina hasta 500 documentos por ejecución usando lotes; para colecciones grandes, complementar con paginación o TTL.
+- Observabilidad:
+  - Logs en Functions: inicio/fin y conteo de documentos eliminados.
+  - Firestore: tamaño de colección y tasa de crecimiento tras habilitar limpieza o TTL.
+
 ---
 
 ## 📚 Recursos Adicionales

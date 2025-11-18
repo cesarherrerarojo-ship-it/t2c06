@@ -176,9 +176,11 @@
 
   <!-- Firebase SDK -->
   <script type="module">
-    import { auth, db } from './js/firebase-config.js';
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
+    import { auth } from './js/firebase-config.js';
     import { logger } from './js/logger.js';
+    import { handleFirebaseNetworkError, showNetworkError } from './js/network-error-handler.js';
+    import { isDemoMode, getDemoUser, initializeDemoMode } from './js/demo-mode.js';
     import {
       signInWithEmailAndPassword,
       sendPasswordResetEmail,
@@ -325,38 +327,101 @@
       } catch (error) {
         logger.error('Login error:', error);
 
-        let errorMessage = 'Error al iniciar sesión';
+        // Handle network errors with detailed information
+        if (error.code === 'auth/network-request-failed' || 
+            error.code === 'auth/internal-error' || 
+            error.code === 'auth/unavailable' || 
+            error.code === 'auth/timeout') {
+          
+          const errorInfo = handleFirebaseNetworkError(error, 'inicio de sesión');
+          showNetworkError(errorInfo, showToast);
+          
+          // Log additional debugging information
+          console.error('[LOGIN NETWORK ERROR]', {
+            code: error.code,
+            hostname: location.hostname,
+            protocol: location.protocol,
+            online: navigator.onLine,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Offer demo mode for development/testing
+          if (errorInfo.isDomainIssue) {
+            // Automatically activate demo mode for domain issues
+            try {
+              console.log('🔄 Activando modo demo automáticamente para login...');
+              
+              // Demo mode login (for testing only)
+              const demoUserData = {
+                uid: 'demo_user_123',
+                email: email,
+                displayName: 'Usuario Demo',
+                role: 'user',
+                subscription: 'free',
+                isDemo: true,
+                loginTime: new Date().toISOString(),
+                demoMessage: 'Modo demo activado - dominio no autorizado en Firebase'
+              };
+              
+              // Store demo user data in localStorage for testing
+              localStorage.setItem('demoUser', JSON.stringify(demoUserData));
+              localStorage.setItem('demoToken', 'demo_token_' + Date.now());
+              localStorage.setItem('isDemoMode', 'true');
+              
+              showToast('✅ Modo demo activado automáticamente', 'success');
+              showToast('🎯 Inicio de sesión demo exitoso', 'info');
+              showToast('💡 Nota: Estás en modo demo - funcionalidad limitada', 'warning');
+              
+              // Redirect to demo dashboard
+              setTimeout(() => {
+                window.location.href = '/webapp/buscar-usuarios.html?demo=true&auto=true';
+              }, 3000);
+              
+              return; // Exit early since we handled it
+            } catch (demoError) {
+              console.error('Demo mode error:', demoError);
+              showToast('❌ Error incluso en modo demo', 'error');
+            }
+          }
+          
+        } else {
+          // Handle other authentication errors
+          let errorMessage = 'Error al iniciar sesión';
 
-        switch (error.code) {
-          case 'auth/invalid-email':
-            errorMessage = 'Correo electrónico inválido';
-            break;
-          case 'auth/user-disabled':
-            errorMessage = 'Esta cuenta ha sido deshabilitada';
-            break;
-          case 'auth/user-not-found':
-            errorMessage = 'No existe una cuenta con este correo';
-            break;
-          case 'auth/wrong-password':
-            errorMessage = 'Contraseña incorrecta';
-            break;
-          case 'auth/invalid-credential':
-            errorMessage = 'Credenciales inválidas. Verifica tu correo y contraseña';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'Demasiados intentos fallidos. Intenta más tarde';
-            break;
-          default:
-            errorMessage = error.message;
+          switch (error.code) {
+            case 'auth/invalid-email':
+              errorMessage = 'Correo electrónico inválido';
+              break;
+            case 'auth/user-disabled':
+              errorMessage = 'Esta cuenta ha sido deshabilitada';
+              break;
+            case 'auth/user-not-found':
+              errorMessage = 'No existe una cuenta con este correo';
+              break;
+            case 'auth/wrong-password':
+              errorMessage = 'Contraseña incorrecta';
+              break;
+            case 'auth/invalid-credential':
+              errorMessage = 'Credenciales inválidas. Verifica tu correo y contraseña';
+              break;
+            case 'auth/too-many-requests':
+              errorMessage = 'Demasiados intentos fallidos. Intenta más tarde';
+              break;
+            default:
+              errorMessage = error.message;
+          }
+
+          showToast(errorMessage, 'error');
         }
-
-        showToast(errorMessage, 'error');
 
         // Re-enable button
         loginButton.disabled = false;
         loginButton.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión';
       }
     });
+
+    // Initialize demo mode UI if active
+    initializeDemoMode();
   </script>
 
 </body>

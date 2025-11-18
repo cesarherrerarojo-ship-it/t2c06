@@ -652,10 +652,43 @@
 
   <!-- Error Fixes -->
   <script src="/webapp/js/error-fixes.js"></script>
+  
+  <!-- Demo Mode Banner -->
+  <script src="/webapp/js/demo-banner.js"></script>
+  
+  <!-- Demo Mode Utilities -->
+  <script type="module">
+    import { isDemoMode, getDemoUser, getDemoAuthState } from './js/demo-mode.js';
+    
+    // Override auth checks for demo mode
+    window.checkDemoAuth = function() {
+      if (isDemoMode()) {
+        const demoUser = getDemoUser();
+        if (demoUser) {
+          // Simulate authenticated user
+          return {
+            uid: demoUser.uid,
+            email: demoUser.email,
+            emailVerified: true,
+            isDemo: true
+          };
+        }
+      }
+      return null;
+    };
+    
+    // Override email verification check for demo
+    window.checkDemoEmailVerified = function() {
+      if (isDemoMode()) {
+        return true; // Demo users are always "verified"
+      }
+      return null;
+    };
+  </script>
 
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -907,6 +940,33 @@
 
     // Auth Check
     onAuthStateChanged(auth, async (user) => {
+      // Check for demo mode first
+      const demoAuth = window.checkDemoAuth();
+      if (demoAuth) {
+        console.log('🎯 Demo mode active - bypassing Firebase auth');
+        currentUser = { uid: demoAuth.uid, email: demoAuth.email, emailVerified: true };
+        
+        // Create mock user data for demo
+        currentUserData = {
+          id: demoAuth.uid,
+          email: demoAuth.email,
+          alias: 'Usuario Demo',
+          gender: 'masculino',
+          birthDate: '1990-01-01',
+          reputation: 'BRONCE',
+          hasActiveSubscription: false,
+          hasAntiGhostingInsurance: false,
+          location: { lat: 40.4168, lng: -3.7038 }
+        };
+        
+        await loadUserMatches();
+        initMap();
+        await loadUsers();
+        loadSavedFilters();
+        updatePaymentStatusBanner();
+        return;
+      }
+      
       if (!user) {
         window.location.href = '/webapp/login.html';
         return;
