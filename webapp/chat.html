@@ -203,7 +203,7 @@
   </div>
 
   <!-- Options Menu -->
-  <div id="optionsMenu" class="hidden fixed inset-0 bg-black/80 flex items-end justify-center z-50 p-4" onclick="closeOptionsMenu()">
+  <div id="optionsMenu" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-end justify-center z-50 p-4" onclick="closeOptionsMenu()">
     <div class="glass-strong rounded-2xl w-full max-w-md p-6" onclick="event.stopPropagation()">
       <h3 class="text-xl font-bold mb-4">Opciones</h3>
       <div class="space-y-2">
@@ -236,7 +236,7 @@
   </div>
 
   <!-- Date Proposal Modal -->
-  <div id="dateProposalModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+  <div id="dateProposalModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
     <div class="glass-strong rounded-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-2xl font-bold">
@@ -351,7 +351,7 @@
   </div>
 
   <!-- Block Confirmation Modal -->
-  <div id="blockModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+  <div id="blockModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full p-8">
       <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
         <i class="fas fa-ban text-4xl text-red-400"></i>
@@ -372,7 +372,7 @@
   </div>
 
   <!-- Error Fixes -->
-  <script src="/webapp/js/error-fixes.js"></script>
+  <script type="module" src="/webapp/js/error-fixes.js"></script>
 
   <!-- Firebase SDK -->
   <script type="module">
@@ -701,11 +701,11 @@
 
     // Options menu
     window.showOptionsMenu = function() {
-      document.getElementById('optionsMenu').classList.remove('hidden');
+      document.getElementById('optionsMenu').classList.remove('opacity-0', 'pointer-events-none');
     };
 
     window.closeOptionsMenu = function() {
-      document.getElementById('optionsMenu').classList.add('hidden');
+      document.getElementById('optionsMenu').classList.add('opacity-0', 'pointer-events-none');
     };
 
     // Report user
@@ -733,12 +733,12 @@
     // Block user
     window.blockUser = function() {
       document.getElementById('blockUserName').textContent = otherUserData.alias || 'Este usuario';
-      document.getElementById('blockModal').classList.remove('hidden');
+      document.getElementById('blockModal').classList.remove('opacity-0', 'pointer-events-none');
       closeOptionsMenu();
     };
 
     window.closeBlockModal = function() {
-      document.getElementById('blockModal').classList.add('hidden');
+      document.getElementById('blockModal').classList.add('opacity-0', 'pointer-events-none');
     };
 
     window.confirmBlock = async function() {
@@ -793,12 +793,12 @@
       }
 
       document.getElementById('insuranceWarning').classList.add('hidden');
-      document.getElementById('dateProposalModal').classList.remove('hidden');
+      document.getElementById('dateProposalModal').classList.remove('opacity-0', 'pointer-events-none');
       renderCalendar();
     };
 
     window.closeDateProposal = function() {
-      document.getElementById('dateProposalModal').classList.add('hidden');
+      document.getElementById('dateProposalModal').classList.add('opacity-0', 'pointer-events-none');
     };
 
     // Calendar functions

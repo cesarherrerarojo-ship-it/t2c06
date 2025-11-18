@@ -167,6 +167,9 @@
                 <button class="test-button" onclick="clearLogs()">
                     <i class="fas fa-trash"></i> Limpiar Logs
                 </button>
+                <button class="test-button" onclick="createTestUsers()">
+                    <i class="fas fa-user-plus"></i> Crear cuentas de prueba
+                </button>
             </div>
         </div>
 
@@ -387,10 +390,107 @@
             document.getElementById('recommendations-section').style.display = 'none';
         };
 
+        window.createTestUsers = async function() {
+            try {
+                log('👥 Creando cuentas de prueba...', 'info');
+
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+                const { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+                const { getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+                const firebaseConfig = {
+                    apiKey: 'AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s',
+                    authDomain: 'tuscitasseguras-2d1a6.firebaseapp.com',
+                    projectId: 'tuscitasseguras-2d1a6',
+                    storageBucket: 'tuscitasseguras-2d1a6.firebasestorage.app',
+                    messagingSenderId: '924208562587',
+                    appId: '1:924208562587:web:5291359426fe390b36213e'
+                };
+
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                async function ensureUser({ email, password, alias, gender, birthDate }) {
+                    try {
+                        const cred = await createUserWithEmailAndPassword(auth, email, password);
+                        log(`✅ Cuenta creada: ${email}`, 'success');
+                        try {
+                            await sendEmailVerification(cred.user);
+                            log(`✉️ Verificación enviada: ${email}`, 'info');
+                        } catch {}
+                    } catch (e) {
+                        if (e.code === 'auth/email-already-in-use') {
+                            log(`ℹ️ Ya existe: ${email}. Iniciando sesión...`, 'info');
+                            await signInWithEmailAndPassword(auth, email, password);
+                        } else {
+                            throw e;
+                        }
+                    }
+
+                    const uid = auth.currentUser.uid;
+                    const userRef = doc(db, 'users', uid);
+                    const existing = await getDoc(userRef);
+                    if (existing.exists()) {
+                        await updateDoc(userRef, {
+                            alias,
+                            gender,
+                            birthDate,
+                            hasActiveSubscription: true,
+                            hasAntiGhostingInsurance: true
+                        });
+                        log(`🛠️ Perfil actualizado: ${email}`, 'info');
+                    } else {
+                        await setDoc(userRef, {
+                            uid,
+                            email,
+                            alias,
+                            gender,
+                            birthDate,
+                            userRole: 'regular',
+                            hasActiveSubscription: true,
+                            hasAntiGhostingInsurance: true,
+                            createdAt: serverTimestamp()
+                        });
+                        log(`🧾 Perfil creado en Firestore: ${email}`, 'success');
+                    }
+                }
+
+                await ensureUser({
+                    email: 'gonzalo.hrrj@gmail.com',
+                    password: 'Temporal123!',
+                    alias: 'Gonzalo',
+                    gender: 'masculino',
+                    birthDate: '1990-01-01'
+                });
+                await signOut(auth);
+
+                await ensureUser({
+                    email: 'lacasitadebarajas@gmail.com',
+                    password: 'Temporal123!',
+                    alias: 'La Casita',
+                    gender: 'femenino',
+                    birthDate: '1992-05-10'
+                });
+
+                log('🎉 Cuentas listas. Inicia sesión en el frontend para navegar.', 'success');
+            } catch (error) {
+                log(`❌ Error creando cuentas: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
         // Log environment info
         log(`🌐 Entorno: ${location.hostname} (${location.protocol})`, 'info');
         log(`📱 Navegador: ${navigator.userAgent.substring(0, 50)}...`, 'info');
         log(`🔌 Estado de red: ${navigator.onLine ? 'Online' : 'Offline'}`, navigator.onLine ? 'success' : 'error');
+        try {
+            const already = localStorage.getItem('testUsersCreated');
+            if (!already) {
+                await createTestUsers();
+                localStorage.setItem('testUsersCreated', 'true');
+            }
+        } catch {}
 
     </script>
 </body>

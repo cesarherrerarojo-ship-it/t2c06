@@ -95,6 +95,16 @@ console.error = function(...args) {
         return;
     }
 
+    if (message.includes('google.firestore.v1.Firestore') && message.includes('net::ERR_ABORTED')) {
+        console.warn('⚠️ Firestore canal abortado (dev)');
+        return;
+    }
+
+    if (message.includes('PushManager') && message.includes('no active Service Worker')) {
+        console.warn('⚠️ Notificaciones: Service Worker no activo');
+        return;
+    }
+
     originalConsoleError.apply(console, args);
 };
 
@@ -189,10 +199,3 @@ window.addEventListener('error', function(e) {
 }, true);
 
 console.log('✅ Error fixes loaded successfully');
-
-// Export for use in other scripts
-export {
-    updateGenderDependentFields: window.updateGenderDependentFields,
-    initRecaptchaSafely: window.initRecaptchaSafely,
-    showUserFriendlyError: window.showUserFriendlyError
-};

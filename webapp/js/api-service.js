@@ -5,7 +5,7 @@
 
 export class APIService {
   constructor() {
-    this.baseURL = 'http://localhost:8000';
+    this.baseURL = 'http://localhost:8001';
     this.token = null;
     this.headers = {
       'Content-Type': 'application/json',
@@ -49,15 +49,34 @@ export class APIService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        let detail = `HTTP ${response.status}`;
+        try {
+          const json = await response.json();
+          detail = json.detail || detail;
+        } catch (e) {
+          try {
+            const text = await response.text();
+            if (text) detail = text;
+          } catch {}
+        }
+        throw new Error(detail);
       }
 
-      return await response.json();
+      try {
+        return await response.json();
+      } catch {
+        return {};
+      }
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
+      const ep = endpoint || '';
+      const isNoise = ep === '/health' || ep.includes('/auth/status');
+      if (isNoise) {
+        console.warn(`API warning: ${ep}`, error.message || error);
+      } else {
+        console.error(`API request failed: ${ep}`, error);
+      }
       throw error;
     }
   }

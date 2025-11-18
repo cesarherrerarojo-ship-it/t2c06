@@ -1,5 +1,6 @@
 // functions/index.js (Node 18)
 const functions = require('firebase-functions');
+const f = functions.region('europe-west1');
 const admin = require('firebase-admin');
 const stripe = require('stripe')(functions.config().stripe?.secret_key || process.env.STRIPE_SECRET_KEY);
 
@@ -184,7 +185,7 @@ async function logFailedPayment(userId, paymentData) {
 // ============================================================================
 // 1) CUSTOM CLAIMS: Al crear el doc de usuario, fijamos displayName y claims
 // ============================================================================
-exports.onUserDocCreate = functions.firestore
+exports.onUserDocCreate = f.firestore
   .document('users/{userId}')
   .onCreate(async (snap, ctx) => {
     const uid = ctx.params.userId;
@@ -221,7 +222,7 @@ exports.onUserDocCreate = functions.firestore
 // ============================================================================
 // 2) CUSTOM CLAIMS UPDATE: Propagar cambios de role/gender a claims
 // ============================================================================
-exports.onUserDocUpdate = functions.firestore
+exports.onUserDocUpdate = f.firestore
   .document('users/{userId}')
   .onUpdate(async (change, ctx) => {
     const uid = ctx.params.userId;
@@ -261,7 +262,7 @@ exports.onUserDocUpdate = functions.firestore
 // ============================================================================
 // 3) CHAT ACL: Sincroniza ACL de chats en Storage cuando cambian participantes
 // ============================================================================
-exports.syncChatACL = functions.firestore
+exports.syncChatACL = f.firestore
   .document('conversations/{conversationId}')
   .onWrite(async (change, ctx) => {
     const conversationId = ctx.params.conversationId;
@@ -305,7 +306,7 @@ exports.syncChatACL = functions.firestore
 // ============================================================================
 // 4) ADMIN: Función HTTP para actualizar claims manualmente (útil para testing)
 // ============================================================================
-exports.updateUserClaims = functions.https.onCall(async (data, context) => {
+exports.updateUserClaims = f.https.onCall(async (data, context) => {
   // Solo admins pueden llamar esta función
   if (!context.auth || context.auth.token.role !== 'admin') {
     throw new functions.https.HttpsError(
@@ -350,7 +351,7 @@ exports.updateUserClaims = functions.https.onCall(async (data, context) => {
 // ============================================================================
 // 5) UTILITY: Función HTTP para obtener claims de un usuario (debugging)
 // ============================================================================
-exports.getUserClaims = functions.https.onCall(async (data, context) => {
+exports.getUserClaims = f.https.onCall(async (data, context) => {
   // Solo usuarios autenticados pueden ver sus propios claims, admins pueden ver cualquiera
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -387,7 +388,7 @@ exports.getUserClaims = functions.https.onCall(async (data, context) => {
 // ============================================================================
 // 6) STRIPE WEBHOOK: Manejar eventos de Stripe (subscriptions y payments)
 // ============================================================================
-exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
+exports.stripeWebhook = f.https.onRequest(async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = functions.config().stripe?.webhook_secret || process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -804,7 +805,7 @@ async function verifyPayPalWebhookSignature(req) {
 // ============================================================================
 // 7) PAYPAL WEBHOOK: Manejar eventos de PayPal (subscriptions y payments)
 // ============================================================================
-exports.paypalWebhook = functions.https.onRequest(async (req, res) => {
+exports.paypalWebhook = f.https.onRequest(async (req, res) => {
   const event = req.body;
 
   console.log(`[paypalWebhook] Event received: ${event.event_type}`);
@@ -1114,7 +1115,7 @@ async function handlePayPalAuthorizationVoided(resource) {
  * 4. User approves → PayPal returns payment token
  * 5. Frontend saves payment token in Firestore
  */
-exports.createInsuranceVaultSetup = functions.https.onCall(async (data, context) => {
+exports.createInsuranceVaultSetup = f.https.onCall(async (data, context) => {
   // 1. Verify authentication
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -1219,7 +1220,7 @@ exports.createInsuranceVaultSetup = functions.https.onCall(async (data, context)
  *
  * @param {Object} data - { userId: string, appointmentId: string, reason: string }
  */
-exports.chargeInsuranceFromVault = functions.https.onCall(async (data, context) => {
+exports.chargeInsuranceFromVault = f.https.onCall(async (data, context) => {
   // 1. Verify admin authorization
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
@@ -1396,7 +1397,7 @@ exports.chargeInsuranceFromVault = functions.https.onCall(async (data, context) 
  *
  * @param {Object} data - { userId: string }
  */
-exports.deleteInsuranceVault = functions.https.onCall(async (data, context) => {
+exports.deleteInsuranceVault = f.https.onCall(async (data, context) => {
   // 1. Verify authentication
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
@@ -1518,7 +1519,7 @@ exports.deleteInsuranceVault = functions.https.onCall(async (data, context) => {
  * Crear suscripción Stripe para un usuario
  * Se usa desde el frontend para iniciar el flujo de suscripción
  */
-exports.createStripeSubscription = functions.https.onCall(async (data, context) => {
+exports.createStripeSubscription = f.https.onCall(async (data, context) => {
   // Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -1609,7 +1610,7 @@ exports.createStripeSubscription = functions.https.onCall(async (data, context) 
 /**
  * Actualizar método de pago de una suscripción Stripe
  */
-exports.updateStripePaymentMethod = functions.https.onCall(async (data, context) => {
+exports.updateStripePaymentMethod = f.https.onCall(async (data, context) => {
   // Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -1677,7 +1678,7 @@ exports.updateStripePaymentMethod = functions.https.onCall(async (data, context)
 /**
  * Cancelar suscripción Stripe de un usuario
  */
-exports.cancelStripeSubscription = functions.https.onCall(async (data, context) => {
+exports.cancelStripeSubscription = f.https.onCall(async (data, context) => {
   // Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -1725,7 +1726,7 @@ exports.cancelStripeSubscription = functions.https.onCall(async (data, context) 
 // ============================================================================
 // El repositorio de idempotencia guarda `processedAt` como timestamp.
 // Esta función programada elimina documentos con `processedAt` anteriores a 30 días.
-exports.cleanupWebhookEvents = functions.pubsub
+exports.cleanupWebhookEvents = f.pubsub
   .schedule('every 24 hours')
   .timeZone('UTC')
   .onRun(async () => {
