@@ -26,8 +26,6 @@ service cloud.firestore {
       // Note: Firestore Rules limitations - we use a conservative check
       // If birthDate is YYYY-MM-DD, we convert to timestamp
       let birthYear = int(birthDate.split('-')[0]);
-      let birthMonth = int(birthDate.split('-')[1]);
-      let birthDay = int(birthDate.split('-')[2]);
 
       // Approximate milliseconds since epoch for birth date
       // This is a simplified calculation due to Firestore Rules limitations
@@ -60,9 +58,6 @@ service cloud.firestore {
     }
 
     // Verificar si el usuario NECESITA pagar (solo hombres por ahora)
-    function mustPay() {
-      return isMale();  // Solo hombres necesitan pagar actualmente
-    }
 
     // Validar que el usuario puede chatear (membresía requerida para hombres)
     function canChat() {
