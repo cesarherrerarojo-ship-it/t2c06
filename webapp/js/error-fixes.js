@@ -30,10 +30,10 @@ if (typeof updateGenderDependentFields === 'undefined') {
             if (sosSection) {
                 if (gender === 'femenino') {
                     sosSection.classList.remove('hidden');
-                    sosSection.classList.add('block');
+                    sosSection.classList.add('flex');
                 } else {
                     sosSection.classList.add('hidden');
-                    sosSection.classList.remove('block');
+                    sosSection.classList.remove('flex');
                 }
             }
 

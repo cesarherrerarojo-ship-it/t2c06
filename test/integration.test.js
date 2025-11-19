@@ -16,7 +16,7 @@ const RULES_PATH = './firestore.rules';
 describe('Integration Tests - Complete Payment Flow', () => {
   let testEnv;
 
-  before(async () => {
+  beforeAll(async () => {
     setLogLevel('error');
 
     testEnv = await initializeTestEnvironment({
@@ -33,7 +33,7 @@ describe('Integration Tests - Complete Payment Flow', () => {
     await testEnv.clearFirestore();
   });
 
-  after(async () => {
+  afterAll(async () => {
     await testEnv.cleanup();
   });
 

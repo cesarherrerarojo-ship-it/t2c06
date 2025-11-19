@@ -65,6 +65,10 @@ export function handleFirebaseNetworkError(error, operation = 'operation') {
     ];
     errorInfo.severity = 'error';
     errorInfo.shouldRetry = true;
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('<html') || msg.includes('page not found') || msg.includes('http cloud function returned an error')) {
+      errorInfo.isDomainIssue = true;
+    }
     
   } else if (error.code === 'auth/timeout') {
     errorInfo.userMessage = 'La solicitud tardó demasiado tiempo. El servidor no respondió.';

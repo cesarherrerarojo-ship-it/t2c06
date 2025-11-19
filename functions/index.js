@@ -2,9 +2,97 @@
 const functions = require('firebase-functions');
 const f = functions.region('europe-west1');
 const admin = require('firebase-admin');
+const express = require('express');
+const cors = require('cors');
 const stripe = require('stripe')(functions.config().stripe?.secret_key || process.env.STRIPE_SECRET_KEY);
+const ADMIN_EMAILS = ['cesar.herrera.rojo@gmail.com'];
 
 admin.initializeApp();
+
+const apiApp = express();
+apiApp.use(cors({ origin: [
+  'http://localhost:8000',
+  'https://tuscitasseguras-2d1a6.web.app',
+  'https://tuscitasseguras-2d1a6.firebaseapp.com'
+] }));
+apiApp.use(express.json());
+
+apiApp.get('/health', (req, res) => {
+  res.json({ status: 'healthy', version: '1.0.0', timestamp: new Date().toISOString() });
+});
+
+apiApp.get('/api/v1/auth/status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ detail: 'Authorization header missing or invalid' });
+    }
+    const token = authHeader.split(' ', 2)[1];
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(token);
+    } catch (e) {
+      return res.status(401).json({ detail: 'Invalid or expired Firebase ID token' });
+    }
+    const uid = decoded.uid;
+    const userRecord = await admin.auth().getUser(uid);
+    const snap = await admin.firestore().collection('users').doc(uid).get();
+    const data = snap.exists ? snap.data() : {};
+    const photos = Array.isArray(data.photos) ? data.photos : [];
+    const bio = typeof data.bio === 'string' ? data.bio : '';
+    const profileComplete = Boolean(data.alias && bio && photos.length >= 3);
+    res.json({
+      uid,
+      email: userRecord.email || '',
+      email_verified: !!userRecord.emailVerified,
+      profile_complete: profileComplete,
+      has_active_subscription: !!data.hasActiveSubscription,
+      subscription_status: data.subscriptionStatus || 'inactive',
+      created_at: userRecord.metadata ? userRecord.metadata.creationTime : null,
+      last_login: userRecord.metadata ? userRecord.metadata.lastSignInTime : null
+    });
+  } catch (error) {
+    res.status(500).json({ detail: 'Error getting authentication status' });
+  }
+});
+
+apiApp.get('/api/v1/membership/status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ detail: 'Authorization header missing or invalid' });
+    }
+    const token = authHeader.split(' ', 2)[1];
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(token);
+    } catch (e) {
+      return res.status(401).json({ detail: 'Invalid or expired Firebase ID token' });
+    }
+    const uid = decoded.uid;
+    const snap = await admin.firestore().collection('users').doc(uid).get();
+    if (!snap.exists) {
+      return res.json({ has_active_membership: false, subscription_status: 'inactive', details: 'User not found' });
+    }
+    const data = snap.data();
+    res.json({
+      has_active_membership: !!data.hasActiveSubscription,
+      subscription_status: data.subscriptionStatus || 'inactive',
+      subscription_id: data.subscriptionId || null,
+      subscription_start_date: data.subscriptionStartDate || null,
+      subscription_end_date: data.subscriptionEndDate || null,
+      has_anti_ghosting_insurance: !!data.hasAntiGhostingInsurance,
+      insurance_purchase_date: data.insurancePurchaseDate || null,
+      insurance_amount: data.insuranceAmount || null,
+      can_access_premium_features: !!data.hasActiveSubscription,
+      details: 'Membership status retrieved successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ detail: 'Error getting membership status' });
+  }
+});
+
+exports.api = f.https.onRequest(apiApp);
 
 // ============================================================================
 // HELPER FUNCTIONS: Payment management
@@ -185,20 +273,29 @@ async function logFailedPayment(userId, paymentData) {
 // ============================================================================
 // 1) CUSTOM CLAIMS: Al crear el doc de usuario, fijamos displayName y claims
 // ============================================================================
-exports.onUserDocCreate = f.firestore
+// v2 Firestore triggers removed for stability
+
+exports.onUserDocCreateGen1 = f.firestore
   .document('users/{userId}')
   .onCreate(async (snap, ctx) => {
     const uid = ctx.params.userId;
     const data = snap.data() || {};
     const name = (data.name || data.alias || '').toString().slice(0, 100);
     const gender = ['masculino','femenino'].includes(data.gender) ? data.gender : null;
-    const userRole = data.userRole || 'regular';
+    let userRole = data.userRole || 'regular';
 
     console.log(`[onUserDocCreate] Setting claims for ${uid}: role=${userRole}, gender=${gender}`);
 
     // Display name en Auth
     try {
       await admin.auth().updateUser(uid, { displayName: name });
+      const user = await admin.auth().getUser(uid);
+      const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase());
+      if (isAdminEmail && userRole !== 'admin') {
+        userRole = 'admin';
+        const db = admin.firestore();
+        await db.collection('users').doc(uid).set({ userRole: 'admin', isAdmin: true }, { merge: true });
+      }
       console.log(`[onUserDocCreate] Updated displayName for ${uid}`);
     } catch (e) {
       console.error(`[onUserDocCreate] Error updating displayName:`, e);
@@ -222,29 +319,33 @@ exports.onUserDocCreate = f.firestore
 // ============================================================================
 // 2) CUSTOM CLAIMS UPDATE: Propagar cambios de role/gender a claims
 // ============================================================================
-exports.onUserDocUpdate = f.firestore
+exports.onUserDocUpdateGen1 = f.firestore
   .document('users/{userId}')
   .onUpdate(async (change, ctx) => {
     const uid = ctx.params.userId;
     const before = change.before.data();
     const after = change.after.data();
 
-    // Solo actualizar claims si role o gender cambiaron
-    const roleChanged = before.userRole !== after.userRole;
-    const genderChanged = before.gender !== after.gender;
-
-    if (!roleChanged && !genderChanged) {
-      console.log(`[onUserDocUpdate] No role/gender changes for ${uid}, skipping`);
-      return null;
-    }
-
-    const newRole = after.userRole || 'regular';
+    let newRole = after.userRole || 'regular';
     const newGender = ['masculino','femenino'].includes(after.gender) ? after.gender : null;
-
-    console.log(`[onUserDocUpdate] Updating claims for ${uid}: role=${newRole}, gender=${newGender}`);
 
     try {
       const user = await admin.auth().getUser(uid);
+      const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase());
+      if (isAdminEmail && newRole !== 'admin') {
+        newRole = 'admin';
+        const db = admin.firestore();
+        await db.collection('users').doc(uid).set({ userRole: 'admin', isAdmin: true }, { merge: true });
+      }
+
+      const roleChanged = before.userRole !== newRole;
+      const genderChanged = before.gender !== newGender;
+
+      if (!roleChanged && !genderChanged) {
+        console.log(`[onUserDocUpdate] No effective role/gender changes for ${uid}, skipping`);
+        return null;
+      }
+
       const oldClaims = user.customClaims || {};
       await admin.auth().setCustomClaims(uid, {
         ...oldClaims,
@@ -262,7 +363,7 @@ exports.onUserDocUpdate = f.firestore
 // ============================================================================
 // 3) CHAT ACL: Sincroniza ACL de chats en Storage cuando cambian participantes
 // ============================================================================
-exports.syncChatACL = f.firestore
+exports.syncChatACLGen1 = f.firestore
   .document('conversations/{conversationId}')
   .onWrite(async (change, ctx) => {
     const conversationId = ctx.params.conversationId;
@@ -382,6 +483,117 @@ exports.getUserClaims = f.https.onCall(async (data, context) => {
   } catch (error) {
     console.error(`[getUserClaims] Error:`, error);
     throw new functions.https.HttpsError('not-found', 'Usuario no encontrado');
+  }
+});
+
+// ============================================================================
+// 5b) UTILITY: Listar usuarios con membresía activa (solo admin)
+// ============================================================================
+exports.listActiveMembers = f.https.onCall(async (data, context) => {
+  if (!context.auth || context.auth.token.role !== 'admin') {
+    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden listar miembros activos');
+  }
+
+  try {
+    const db = admin.firestore();
+    const usersRef = db.collection('users');
+
+    const byFlagSnap = await usersRef.where('hasActiveSubscription', '==', true).get();
+    const byStatusSnap = await usersRef.where('subscriptionStatus', '==', 'active').get();
+
+    const map = new Map();
+    byFlagSnap.forEach(doc => map.set(doc.id, doc.data()));
+    byStatusSnap.forEach(doc => { if (!map.has(doc.id)) map.set(doc.id, doc.data()); });
+
+    const rows = [];
+    for (const [uid, data] of map.entries()) {
+      rows.push({
+        uid,
+        email: data.email || '',
+        alias: data.alias || '',
+        gender: data.gender || '',
+        hasActiveSubscription: !!data.hasActiveSubscription,
+        subscriptionStatus: data.subscriptionStatus || 'unknown'
+      });
+    }
+
+    rows.sort((a, b) => a.alias.localeCompare(b.alias));
+    return { count: rows.length, users: rows };
+  } catch (error) {
+    console.error('[listActiveMembers] Error:', error);
+    throw new functions.https.HttpsError('internal', 'Error listando miembros activos');
+  }
+});
+
+exports.setMembershipActive = f.https.onCall(async (data, context) => {
+  if (!context.auth || context.auth.token.role !== 'admin') {
+    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden actualizar membresías');
+  }
+
+  const { userId, email, subscriptionStatus, insurance } = data || {};
+  let targetUserId = userId || null;
+
+  try {
+    const db = admin.firestore();
+    if (!targetUserId && email) {
+      const user = await admin.auth().getUserByEmail(String(email));
+      targetUserId = user.uid;
+    }
+    if (!targetUserId) {
+      targetUserId = context.auth.uid;
+    }
+    const payload = {
+      hasActiveSubscription: true,
+      subscriptionStatus: subscriptionStatus || 'active'
+    };
+    if (typeof insurance === 'boolean') {
+      payload.hasAntiGhostingInsurance = insurance;
+    }
+    await db.collection('users').doc(String(targetUserId)).set(payload, { merge: true });
+    return { ok: true, userId: String(targetUserId), updated: payload };
+  } catch (error) {
+    console.error('[setMembershipActive] Error:', error);
+    throw new functions.https.HttpsError('internal', 'Error actualizando membresía');
+  }
+});
+
+exports.adminGenerateResetLink = f.https.onCall(async (data, context) => {
+  if (!context.auth || context.auth.token.role !== 'admin') {
+    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden generar enlaces de restablecimiento');
+  }
+
+  const { alias, userId, email, continueUrl } = data || {};
+
+  try {
+    const db = admin.firestore();
+    let targetEmail = email || null;
+    let targetUid = userId || null;
+
+    if (!targetEmail) {
+      if (targetUid) {
+        const user = await admin.auth().getUser(String(targetUid));
+        targetEmail = user.email || null;
+      } else if (alias) {
+        const snap = await db.collection('users').where('alias', '==', alias).limit(1).get();
+        if (!snap.empty) {
+          const doc = snap.docs[0];
+          targetUid = doc.id;
+          targetEmail = doc.data().email || null;
+        }
+      }
+    }
+
+    if (!targetEmail) {
+      throw new functions.https.HttpsError('not-found', 'No se encontró email para alias/userId proporcionado');
+    }
+
+    const actionCodeSettings = continueUrl ? { url: continueUrl, handleCodeInApp: true } : undefined;
+    const link = await admin.auth().generatePasswordResetLink(targetEmail, actionCodeSettings);
+
+    return { ok: true, link, email: targetEmail, userId: targetUid };
+  } catch (error) {
+    console.error('[adminGenerateResetLink] Error:', error);
+    throw new functions.https.HttpsError('internal', 'Error generando enlace de restablecimiento');
   }
 });
 

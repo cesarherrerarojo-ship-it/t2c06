@@ -47,6 +47,15 @@
   </style>
 </head>
 <body class="text-white">
+  <script>
+    (function () {
+      var h = location.hostname;
+      if (h.indexOf('www.') === 0) {
+        var dest = location.protocol + '//' + h.replace(/^www\./, '') + location.pathname + location.search + location.hash;
+        location.replace(dest);
+      }
+    })();
+  </script>
 
   <!-- Header -->
   <header class="glass fixed top-0 w-full z-50">
@@ -223,12 +232,7 @@
     </div>
   </footer>
 
-  <!-- Firebase Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"></script>
+  
 
   <!-- Backend Integration Script -->
   <script type="module">
@@ -259,6 +263,9 @@
 
       async testBackendConnection() {
         try {
+          if (!apiService.isLocal) {
+            return; // No mostrar estado backend en producción
+          }
           const isAvailable = await apiService.isBackendAvailable();
           
           if (isAvailable) {
@@ -277,7 +284,9 @@
           
         } catch (error) {
           console.error('❌ Backend connection failed:', error);
-          this.showBackendStatus(false);
+          if (apiService.isLocal) {
+            this.showBackendStatus(false);
+          }
         }
       }
 

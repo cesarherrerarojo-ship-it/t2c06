@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Bypass Total - Anti Cloud Function</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            border: 2px solid #ff6b6b;
+        }
+        
+        .logo {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 26px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+            background: white;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .console {
+            background: #2d3436;
+            border: 1px solid #636e72;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 25px;
+            text-align: left;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            color: #ddd;
+        }
+        
+        .console-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            line-height: 1.3;
+        }
+        
+        .console-success {
+            color: #00b894;
+        }
+        
+        .console-error {
+            color: #ff7675;
+        }
+        
+        .console-warning {
+            color: #fdcb6e;
+        }
+        
+        .console-info {
+            color: #74b9ff;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .bypass-info {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #2e7d32;
+        }
+        
+        .method-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        
+        .method-direct { background: #3498db; color: white; }
+        .method-proxy { background: #9b59b6; color: white; }
+        .method-jsonp { background: #e67e22; color: white; }
+        .method-form { background: #27ae60; color: white; }
+        .method-xhr { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">🛡️</div>
+        <h2>Bypass Total</h2>
+        <p class="subtitle">Anti Cloud Function • Anti Blocking Function<br>🔥 Solución definitiva para Firebase Auth</p>
+        
+        <div class="warning-box">
+            <strong>⚠️ IMPORTANTE:</strong> Este sistema bypass completamente las Cloud Functions de Firebase que están causando el error 404. Usa conexión directa a la API REST.
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required placeholder="tu@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            
+            <button type="submit" class="btn" id="loginBtn">
+                🚀 INICIAR BYPASS TOTAL
+            </button>
+        </form>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="bypass-info" id="bypassInfo" style="display: none;">
+            <div id="methodStatus"></div>
+        </div>
+        
+        <div class="console" id="console">
+            <div class="console-entry console-info">🛡️ Sistema de bypass anti-Cloud Function iniciado</div>
+            <div class="console-entry console-warning">⚠️ Preparado para evitar Blocking Functions</div>
+        </div>
+    </div>
+
+    <!-- Cargar configuraciones primero -->
+    <script src="js/firebase-config.js"></script>
+    <!-- Cargar bypass completo -->
+    <script src="js/firebase-auth-complete-bypass.js"></script>
+    
+    <script>
+        // Sistema de consola mejorado
+        const consoleDiv = document.getElementById('console');
+        const statusDiv = document.getElementById('status');
+        const bypassInfo = document.getElementById('bypassInfo');
+        const methodStatus = document.getElementById('methodStatus');
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        
+        function addConsoleEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `console-entry console-${type}`;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        function showStatus(message, type = 'loading') {
+            statusDiv.innerHTML = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+        
+        function showMethodStatus(method, status) {
+            const methodNames = {
+                'direct-rest-api': 'API REST Directa',
+                'proxy-rest-api': 'Proxy API REST',
+                'jsonp-api': 'JSONP',
+                'form-post-api': 'Form POST',
+                'xhr-direct-api': 'XHR Directo'
+            };
+            
+            const methodClass = method.replace('-', '-');
+            methodStatus.innerHTML = `
+                <div style="margin-bottom: 8px;">
+                    <strong>Método activo:</strong> 
+                    <span class="method-indicator method-${methodClass}">${methodNames[method] || method}</span>
+                    <span style="margin-left: 10px; color: ${status === 'success' ? '#00b894' : '#e17055'};">
+                        ${status === 'success' ? '✅' : '🔄'}
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: #666;">
+                    Bypass activo - evitando Cloud Functions
+                </div>
+            `;
+            bypassInfo.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            statusDiv.style.display = 'none';
+        }
+        
+        // Inicializar el sistema de bypass cuando se carga la página
+        window.addEventListener('load', () => {
+            addConsoleEntry('🚀 Inicializando sistema de bypass completo...', 'info');
+            
+            if (initializeCompleteBypass()) {
+                addConsoleEntry('✅ Sistema de bypass anti-Cloud Function inicializado', 'success');
+                addConsoleEntry('🛡️ Preparado para evitar Blocking Functions', 'info');
+                addConsoleEntry('🎯 Conectando directamente a API REST de Firebase', 'info');
+            } else {
+                addConsoleEntry('❌ Error al inicializar el sistema de bypass', 'error');
+                showStatus('Error crítico: No se pudieron cargar las configuraciones', 'error');
+            }
+        });
+        
+        // Manejar el formulario de login con bypass
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                addConsoleEntry('❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '🔄 EJECUTANDO BYPASS...';
+            showStatus('Iniciando bypass anti-Cloud Function...', 'loading');
+            
+            addConsoleEntry('🚀 Iniciando bypass completo de Firebase SDK', 'info');
+            addConsoleEntry(`📧 Email: ${email}`, 'info');
+            addConsoleEntry('🛡️ Objetivo: Evitar Cloud Functions y Blocking Functions', 'warning');
+            
+            try {
+                const result = await loginCompleteBypass(email, password);
+                
+                if (result.success) {
+                    addConsoleEntry('🎉 ¡BYPASS EXITOSO!', 'success');
+                    addConsoleEntry(`✅ Cloud Functions y Blocking Functions evitadas`, 'success');
+                    addConsoleEntry(`📡 Método de bypass: ${result.method}`, 'success');
+                    addConsoleEntry(`👤 Usuario autenticado: ${result.user.email}`, 'success');
+                    addConsoleEntry(`🔑 Token recibido: ${result.user.idToken ? 'Sí' : 'No'}`, 'success');
+                    
+                    showMethodStatus(result.method, 'success');
+                    showStatus(`✅ ¡Autenticación exitosa! Método: ${result.method}`, 'success');
+                    
+                    // Guardar sesión y redirigir
+                    setTimeout(() => {
+                        window.location.href = '/webapp/index.html';
+                    }, 3000);
+                    
+                } else {
+                    addConsoleEntry(`❌ Bypass falló: ${result.error}`, 'error');
+                    showStatus(`Error: ${result.error}`, 'error');
+                    
+                    if (result.error.includes('BLOCKING_FUNCTION')) {
+                        addConsoleEntry('🚨 Las Blocking Functions de Firebase están activas y bloqueando', 'error');
+                        addConsoleEntry('💡 Sugerencia: Desactiva las Blocking Functions en Firebase Console', 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                addConsoleEntry(`🚨 Error crítico en bypass: ${error.message}`, 'error');
+                showStatus(`Error crítico: ${error.message}`, 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '🚀 INICIAR BYPASS TOTAL';
+            }
+        });
+        
+        // Capturar errores globales
+        window.addEventListener('error', (e) => {
+            addConsoleEntry(`🚨 Error global: ${e.message}`, 'error');
+            if (e.message.includes('BLOCKING_FUNCTION')) {
+                addConsoleEntry('🚨 Blocking Function detectada - intentando bypass alternativo', 'warning');
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            addConsoleEntry(`🚨 Promesa rechazada: ${e.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

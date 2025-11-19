@@ -328,7 +328,7 @@
     // Then import Firebase services
     import { auth, db } from '../js/firebase-config.js';
     import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { doc, getDoc, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { doc, getDoc, collection, getDocs, query, where, orderBy, limit, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
     import { loadTheme } from '../js/theme.js';
 
     let currentUser = null;
@@ -355,6 +355,28 @@
 
         await loadDashboardData();
         document.getElementById('loadingOverlay').classList.add('hidden');
+
+        try {
+          const targetEmail = 'cesar.herrera.rojo@gmail.com';
+          const q = query(collection(db, 'users'), where('email', '==', targetEmail), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const userDoc = snap.docs[0];
+            const ref = doc(db, 'users', userDoc.id);
+            await updateDoc(ref, {
+              hasActiveSubscription: true,
+              subscriptionStatus: 'active',
+              hasAntiGhostingInsurance: true,
+              insurancePurchaseDate: serverTimestamp(),
+              insuranceAmount: 120
+            });
+            showToast('Membresía y seguro activados para ' + targetEmail, 'success');
+          } else {
+            showToast('Usuario no encontrado: ' + targetEmail, 'error');
+          }
+        } catch (e) {
+          showToast('Error al activar membresía', 'error');
+        }
       } else {
         window.location.href = '/webapp/login.html';
       }

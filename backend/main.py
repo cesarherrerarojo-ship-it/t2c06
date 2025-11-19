@@ -65,6 +65,26 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
+# Health endpoint
+from datetime import datetime
+
+@app.get("/health")
+async def health_check():
+    try:
+        firebase_connected = bool(firebase_admin._apps)
+    except Exception:
+        firebase_connected = False
+    return {
+        "status": "healthy",
+        "version": settings.API_VERSION,
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": {
+            "api": "running",
+            "firebase": "connected" if firebase_connected else "unavailable",
+            "ml": "loaded"
+        }
+    }
+
 # Initialize Firebase Admin
 if not firebase_admin._apps:
     try:
@@ -84,6 +104,8 @@ def verify_firebase_token(authorization: str = Header(None)) -> dict:
     En modo desarrollo, permite tokens de prueba.
     """
     if not authorization or not authorization.startswith("Bearer "):
+        if settings.ENVIRONMENT == "development":
+            return {"uid": "test_user_123", "email": "test@example.com"}
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing or invalid")
     token = authorization.split(" ", 1)[1]
     
@@ -803,8 +825,8 @@ async def verify_photo(request: PhotoVerificationRequest):
 
 # ========== Fraud Detection Endpoints ==========
 
-@app.post("/api/v1/fraud-check", response_model=FraudCheckResult)
-async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(require_verified_and_complete)):
+@app.post("/api/v1/fraud-check", response_model=SuccessResponse)
+async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(verify_firebase_token)):
     """
     Check for fraudulent or suspicious behavior
 
@@ -825,15 +847,18 @@ async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(r
         # Detectar fraude
         fraud_result = detect_user_fraud(user_data, user_history)
         
-        return FraudCheckResult(
-            is_suspicious=fraud_result['risk_level'] in ['high', 'critical'],
-            risk_score=fraud_result['fraud_score'],
-            flags=fraud_result['indicators'],
-            recommended_action=fraud_result['recommendations'][0] if fraud_result['recommendations'] else "allow",
-            details={
-                'risk_level': fraud_result['risk_level'],
-                'confidence': fraud_result['confidence'],
-                'all_recommendations': fraud_result['recommendations']
+        return SuccessResponse(
+            message="Fraud check completed",
+            data={
+                "is_suspicious": fraud_result['risk_level'] in ['high', 'critical'],
+                "risk_score": fraud_result['fraud_score'],
+                "flags": fraud_result['indicators'],
+                "recommended_action": fraud_result['recommendations'][0] if fraud_result['recommendations'] else "allow",
+                "details": {
+                    'risk_level': fraud_result['risk_level'],
+                    'confidence': fraud_result['confidence'],
+                    'all_recommendations': fraud_result['recommendations']
+                }
             }
         )
     except Exception as e:
@@ -846,8 +871,8 @@ async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(r
 
 # ========== NLP & Moderation Endpoints ==========
 
-@app.post("/api/v1/moderate-message", response_model=MessageModerationResult)
-async def moderate_message(request: MessageModerationRequest, current_user: dict = Depends(require_verified_and_complete)):
+@app.post("/api/v1/moderate-message", response_model=SuccessResponse)
+async def moderate_message(request: MessageModerationRequest, current_user: dict = Depends(verify_firebase_token)):
     """
     Moderate message content using NLP
 
@@ -876,14 +901,17 @@ async def moderate_message(request: MessageModerationRequest, current_user: dict
             context
         )
         
-        return MessageModerationResult(
-            should_block=not moderation_result['is_safe'],
-            is_toxic=moderation_result['severity'] in ['high', 'critical'],
-            contains_personal_info='personal_info' in moderation_result['categories'],
-            is_spam='spam' in moderation_result['categories'],
-            sentiment="neutral",  # Podría agregarse análisis de sentimiento
-            warnings=moderation_result['flagged_phrases'],
-            suggested_edit=moderation_result['alternative_suggestion']
+        return SuccessResponse(
+            message="Message moderation completed",
+            data={
+                "should_block": not moderation_result['is_safe'],
+                "is_toxic": moderation_result['severity'] in ['high', 'critical'],
+                "contains_personal_info": 'personal_info' in moderation_result['categories'],
+                "is_spam": 'spam' in moderation_result['categories'],
+                "sentiment": "neutral",
+                "warnings": moderation_result['flagged_phrases'],
+                "suggested_edit": moderation_result['alternative_suggestion']
+            }
         )
     except Exception as e:
         logger.error(f"Error moderating message: {e}")

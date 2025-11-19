@@ -13,7 +13,7 @@ const RULES_PATH = './firestore.rules';
 describe('Firestore Security Rules - Payment Validation', () => {
   let testEnv;
 
-  before(async () => {
+  beforeAll(async () => {
     // Silence expected Firebase errors
     setLogLevel('error');
 
@@ -32,7 +32,7 @@ describe('Firestore Security Rules - Payment Validation', () => {
     await testEnv.clearFirestore();
   });
 
-  after(async () => {
+  afterAll(async () => {
     await testEnv.cleanup();
   });
 

@@ -242,6 +242,14 @@
 
       <form id="profileForm" class="space-y-6">
 
+        <!-- Hidden fields for compatibility -->
+        <input type="hidden" id="firstName" value="">
+        <input type="hidden" id="lastName" value="">
+        <input type="hidden" id="email" value="">
+        <input type="hidden" id="edad" value="">
+        <input type="hidden" id="municipio" value="">
+        <input type="hidden" id="interes" value="">
+
         <!-- Alias -->
         <div>
           <label class="label">
@@ -511,7 +519,7 @@
     import { themes, applyTheme, loadTheme, saveThemeToFirestore } from './js/theme.js';
     import { logger } from './js/logger.js';
     import { setupGlobalErrorHandling } from './js/error-handler.js';
-    import { initializeNotifications } from './js/notifications.js';
+    import { initializeNotifications } from './js/notifications-safe.js';
     import { isDemoMode, getDemoUser, getDemoAuthState } from './js/demo-mode.js';
 
     // Setup global error handling
@@ -522,22 +530,55 @@
     let photoFile = null;
     let galleryFiles = [null, null, null, null, null]; // 5 gallery photos
     let selectedTheme = 'purple';
+    let isLoadingProfile = false; // PREVENT INFINITE LOOP
+    let hasLoadedProfile = false; // TRACK IF PROFILE ALREADY LOADED
 
-    // Auth State
+    // Auth State - FIXED TO PREVENT INFINITE LOOPS
+    let authStateChangeCount = 0;
+    let lastAuthStateChangeTime = 0;
+    
     onAuthStateChanged(auth, async (user) => {
       try {
+        authStateChangeCount++;
+        const currentTime = Date.now();
+        const timeSinceLastChange = currentTime - lastAuthStateChangeTime;
+        lastAuthStateChangeTime = currentTime;
+        
+        console.log(`🔍 Auth state change #${authStateChangeCount}:`, user ? 'User logged in' : 'No user');
+        console.log(`⏱️ Time since last change: ${timeSinceLastChange}ms`);
+        
+        // EMERGENCY LOOP PREVENTION: If auth changes too frequently, stop processing
+        if (authStateChangeCount > 10 && timeSinceLastChange < 1000) {
+          console.error('🚨 EMERGENCY: Auth state changing too rapidly - stopping to prevent infinite loop');
+          showToast('Error de autenticación - por favor recarga la página', 'error');
+          return;
+        }
+        
+        if (isLoadingProfile || hasLoadedProfile) {
+          console.log('🛑 Preventing duplicate profile load');
+          return;
+        }
+
         if (isDemoMode()) {
           const demoUser = getDemoUser();
           if (demoUser) {
             currentUser = { uid: demoUser.uid, email: demoUser.email, emailVerified: false };
             currentUserData = demoUser;
+            isLoadingProfile = true;
             await loadDemoUserProfile();
+            isLoadingProfile = false;
+            hasLoadedProfile = true;
             return;
           }
         }
+        
         if (user) {
           currentUser = user;
+          isLoadingProfile = true;
           await loadUserProfile();
+          isLoadingProfile = false;
+          hasLoadedProfile = true;
+          
           try {
             const notificationsEnabled = await initializeNotifications();
             if (notificationsEnabled) {
@@ -547,19 +588,29 @@
             console.error('Error initializing push notifications:', error);
           }
         } else {
-          window.location.href = '/webapp/login.html';
+          console.log('🔄 Redirecting to login - no user');
+          // Add delay to prevent rapid redirects
+          setTimeout(() => {
+            window.location.href = '/webapp/login.html';
+          }, 1000);
         }
       } catch (e) {
         logger.error('Auth/init error:', e);
         showToast('Error cargando el perfil', 'error');
+        isLoadingProfile = false;
       } finally {
         const overlay = document.getElementById('loadingOverlay');
         overlay && overlay.classList.add('hidden');
       }
     });
 
-    // Load demo user profile
+    // Load demo user profile - FIXED TO PREVENT LOOPS
     async function loadDemoUserProfile() {
+      if (isLoadingProfile || hasLoadedProfile) {
+        console.log('🛑 Preventing duplicate demo profile load');
+        return;
+      }
+      
       try {
         console.log('🎯 Loading demo user profile...');
         
@@ -571,30 +622,43 @@
         }
         
         // Basic info
-        document.getElementById('userName').textContent = demoUser.displayName || 'Usuario Demo';
-        document.getElementById('userEmail').textContent = demoUser.email;
+        const userNameEl = document.getElementById('userName');
+        const userEmailEl = document.getElementById('userEmail');
+        const photoInitialEl = document.getElementById('photoInitial');
+        
+        if (userNameEl) userNameEl.textContent = demoUser.displayName || 'Usuario Demo';
+        if (userEmailEl) userEmailEl.textContent = demoUser.email;
         
         // Photo placeholder
-        const initial = (demoUser.displayName || demoUser.email || 'D').charAt(0).toUpperCase();
-        document.getElementById('photoInitial').textContent = initial;
+        if (photoInitialEl) {
+          const initial = (demoUser.displayName || demoUser.email || 'D').charAt(0).toUpperCase();
+          photoInitialEl.textContent = initial;
+        }
         
-        // Profile form
-        document.getElementById('firstName').value = demoUser.displayName?.split(' ')[0] || '';
-        document.getElementById('lastName').value = demoUser.displayName?.split(' ')[1] || '';
-        document.getElementById('email').value = demoUser.email;
-        document.getElementById('alias').value = demoUser.displayName || 'Usuario Demo';
+        // Profile form - SAFE ELEMENT ACCESS
+        const aliasInput = document.getElementById('alias');
+        const bioInput = document.getElementById('bio');
         
-        // Demo-specific fields
-        document.getElementById('bio').value = 'Usuario en modo demo - funcionalidad limitada';
-        document.getElementById('municipio').value = 'Demo City';
-        document.getElementById('edad').value = '25';
-        document.getElementById('genero').value = 'otro';
-        document.getElementById('interes').value = 'amistad';
+        if (aliasInput) aliasInput.value = demoUser.displayName || 'Usuario Demo';
+        if (bioInput) bioInput.value = 'Usuario en modo demo - funcionalidad limitada';
         
-        // Demo stats
-        document.getElementById('reputation').textContent = 'BRONCE';
-        document.getElementById('reputationBadge').className = 'reputation-badge reputation-bronce';
-        document.getElementById('reputationText').textContent = 'Bronce';
+        // Set hidden fields safely
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const emailInput = document.getElementById('email');
+        
+        if (firstNameInput) firstNameInput.value = demoUser.displayName?.split(' ')[0] || '';
+        if (lastNameInput) lastNameInput.value = demoUser.displayName?.split(' ')[1] || '';
+        if (emailInput) emailInput.value = demoUser.email;
+        
+        // Demo stats - CHECK IF ELEMENTS EXIST
+        const reputationEl = document.getElementById('reputation');
+        const reputationBadgeEl = document.getElementById('reputationBadge');
+        const reputationTextEl = document.getElementById('reputationText');
+        
+        if (reputationEl) reputationEl.textContent = 'BRONCE';
+        if (reputationBadgeEl) reputationBadgeEl.className = 'reputation-badge reputation-bronce';
+        if (reputationTextEl) reputationTextEl.textContent = 'Bronce';
         
         // Disable save button for demo mode
         const saveButton = document.querySelector('button[onclick="saveProfile()"]');
@@ -612,37 +676,62 @@
       }
     }
 
-    // Load user profile
+    // Load user profile - FIXED TO PREVENT INFINITE LOOPS
     async function loadUserProfile() {
+      if (isLoadingProfile || hasLoadedProfile) {
+        console.log('🛑 Preventing duplicate user profile load');
+        return;
+      }
+      
       try {
+        console.log('📋 Loading user profile for:', currentUser.uid);
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
         if (userDoc.exists()) {
           currentUserData = { id: userDoc.id, ...userDoc.data() };
+          console.log('✅ User data loaded:', currentUserData.alias);
 
-          // Basic info
-          document.getElementById('userName').textContent = currentUserData.alias || 'Usuario';
-          document.getElementById('userEmail').textContent = currentUser.email;
+          // Basic info - SAFE ELEMENT ACCESS
+          const userNameEl = document.getElementById('userName');
+          const userEmailEl = document.getElementById('userEmail');
+          
+          if (userNameEl) userNameEl.textContent = currentUserData.alias || 'Usuario';
+          if (userEmailEl) userEmailEl.textContent = currentUser.email;
 
-          // Photo
+          // Photo - SAFE ELEMENT ACCESS
+          const profilePhotoEl = document.getElementById('profilePhoto');
+          const photoPlaceholderEl = document.getElementById('photoPlaceholder');
+          const photoInitialEl = document.getElementById('photoInitial');
+          
           if (currentUserData.photoURL) {
-            document.getElementById('profilePhoto').src = currentUserData.photoURL;
-            document.getElementById('profilePhoto').classList.remove('hidden');
-            document.getElementById('photoPlaceholder').classList.add('hidden');
+            if (profilePhotoEl) {
+              profilePhotoEl.src = currentUserData.photoURL;
+              profilePhotoEl.classList.remove('hidden');
+            }
+            if (photoPlaceholderEl) photoPlaceholderEl.classList.add('hidden');
           } else {
-            const initial = (currentUserData.alias || currentUser.email || 'U').charAt(0).toUpperCase();
-            document.getElementById('photoInitial').textContent = initial;
+            if (photoInitialEl) {
+              const initial = (currentUserData.alias || currentUser.email || 'U').charAt(0).toUpperCase();
+              photoInitialEl.textContent = initial;
+            }
           }
 
-          // Form fields
-          document.getElementById('alias').value = currentUserData.alias || '';
-          document.getElementById('birthDate').value = currentUserData.birthDate || '';
-          document.getElementById('gender').value = currentUserData.gender || '';
-          document.getElementById('city').value = currentUserData.city || '';
-          document.getElementById('profession').value = currentUserData.profession || '';
-          document.getElementById('bio').value = currentUserData.bio || '';
+          // Form fields - SAFE ELEMENT ACCESS
+          const aliasInput = document.getElementById('alias');
+          const birthDateInput = document.getElementById('birthDate');
+          const genderInput = document.getElementById('gender');
+          const cityInput = document.getElementById('city');
+          const professionInput = document.getElementById('profession');
+          const bioInput = document.getElementById('bio');
+          
+          if (aliasInput) aliasInput.value = currentUserData.alias || '';
+          if (birthDateInput) birthDateInput.value = currentUserData.birthDate || '';
+          if (genderInput) genderInput.value = currentUserData.gender || '';
+          if (cityInput) cityInput.value = currentUserData.city || '';
+          if (professionInput) professionInput.value = currentUserData.profession || '';
+          if (bioInput) bioInput.value = currentUserData.bio || '';
 
-          // Load gallery photos
+          // Load gallery photos - SAFE ELEMENT ACCESS
           if (currentUserData.galleryPhotos && Array.isArray(currentUserData.galleryPhotos)) {
             currentUserData.galleryPhotos.forEach((url, index) => {
               if (url && index < 5) {
@@ -660,11 +749,16 @@
             });
           }
 
-          // Relationship status & preferences
-          document.getElementById('relationshipStatus').value = currentUserData.relationshipStatus || '';
-          document.getElementById('lookingFor').value = currentUserData.lookingFor || '';
-          document.getElementById('ageRangeMin').value = currentUserData.ageRangeMin || 18;
-          document.getElementById('ageRangeMax').value = currentUserData.ageRangeMax || 99;
+          // Relationship status & preferences - SAFE ELEMENT ACCESS
+          const relationshipStatusInput = document.getElementById('relationshipStatus');
+          const lookingForInput = document.getElementById('lookingFor');
+          const ageRangeMinInput = document.getElementById('ageRangeMin');
+          const ageRangeMaxInput = document.getElementById('ageRangeMax');
+          
+          if (relationshipStatusInput) relationshipStatusInput.value = currentUserData.relationshipStatus || '';
+          if (lookingForInput) lookingForInput.value = currentUserData.lookingFor || '';
+          if (ageRangeMinInput) ageRangeMinInput.value = currentUserData.ageRangeMin || 18;
+          if (ageRangeMaxInput) ageRangeMaxInput.value = currentUserData.ageRangeMax || 99;
 
           // Load and apply theme
           selectedTheme = loadTheme(currentUserData);
@@ -672,6 +766,17 @@
 
           // Update bio counter
           updateBioCounter();
+          
+          console.log('✅ Profile loaded successfully');
+        } else {
+          console.log('⚠️ No user document found, creating default profile');
+          // Create default profile if it doesn't exist
+          currentUserData = {
+            alias: currentUser.email.split('@')[0],
+            email: currentUser.email,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
         }
       } catch (error) {
         logger.error('Error loading profile:', error);
@@ -971,11 +1076,18 @@
       }
     };
 
-    // Close success modal
+    // Close success modal - FIXED TO PREVENT LOOPS
     window.closeSuccessModal = function() {
       document.getElementById('successModal').classList.add('opacity-0', 'pointer-events-none');
-      // Reload profile data
-      loadUserProfile();
+      // DON'T reload profile data - this can cause loops
+      // Instead, just update the specific fields that might have changed
+      if (currentUserData) {
+        // Update any fields that might have changed from the save
+        const aliasInput = document.getElementById('alias');
+        if (aliasInput && currentUserData.alias) {
+          aliasInput.value = currentUserData.alias;
+        }
+      }
     };
 
     window.goToSearch = function() {

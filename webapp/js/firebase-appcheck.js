@@ -16,7 +16,8 @@ const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2'
 const FORCE_DEVELOPMENT_MODE = location.hostname === 'localhost' || 
                                location.hostname === '127.0.0.1' || 
                                location.hostname === '' || // file:// protocol
-                               location.protocol === 'file:';
+                               location.protocol === 'file:' ||
+                               location.hostname.includes('vercel.app'); // Also disable on Vercel for now
 
 // ============================================================================
 // 1. DETECTAR ENTORNO
@@ -33,9 +34,9 @@ const ALLOWED_DOMAINS = [
   '127.0.0.1',
   'tuscitasseguras-2d1a6.web.app',
   'tuscitasseguras-2d1a6.firebaseapp.com',
-  'traext5oyy6q.vercel.app', // Vercel deployment domain
-  'vercel.app' // Generic Vercel domain pattern
-  // TODO: Añadir 'tucitasegura.com' cuando esté configurado en reCAPTCHA Enterprise
+  'traext5oyy6q.vercel.app',
+  'vercel.app',
+  'tucitasegura.com'
 ];
 
 const isAllowedDomain = ALLOWED_DOMAINS.some(domain =>

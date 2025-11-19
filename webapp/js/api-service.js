@@ -5,7 +5,13 @@
 
 export class APIService {
   constructor() {
-    this.baseURL = 'http://localhost:8001';
+    const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    this.isLocal = isLocal;
+    const override = (typeof window !== 'undefined' && window.API_BASE_URL) ? String(window.API_BASE_URL) : '';
+    const useSameOrigin = !isLocal && !override;
+    this.useSameOrigin = useSameOrigin;
+    this.baseURL = override ? override : (isLocal ? 'http://localhost:8001' : '');
     this.token = null;
     this.headers = {
       'Content-Type': 'application/json',
@@ -36,6 +42,9 @@ export class APIService {
    * @returns {Promise<Object>} Response data
    */
   async request(endpoint, options = {}) {
+    if (!this.baseURL && !this.useSameOrigin) {
+      throw new Error('Backend disabled in production');
+    }
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       method: 'GET',
@@ -281,7 +290,6 @@ export class APIService {
       await this.healthCheck();
       return true;
     } catch (error) {
-      console.warn('Backend not available:', error);
       return false;
     }
   }
