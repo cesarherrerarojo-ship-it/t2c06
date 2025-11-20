@@ -1,155 +1,125 @@
 #!/bin/bash
 
-# Script de Deployment Automático para TuCitaSegura
-# Ejecuta: ./deploy.sh
+# Script de deployment para TuCitaSegura
+# Ejecutar DESPUÉS de hacer firebase login
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🚀 Deployment a Producción - TuCitaSegura"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "=================================================="
+echo "🚀 TuCitaSegura - Deployment Script"
+echo "=================================================="
 echo ""
 
-# Colores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Funciones
-print_success() {
-  echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_error() {
-  echo -e "${RED}❌ $1${NC}"
-}
-
-print_warning() {
-  echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-print_info() {
-  echo -e "${BLUE}ℹ️  $1${NC}"
-}
-
-# 1. Verificar Firebase CLI
-echo "📦 Verificando Firebase CLI..."
-if ! command -v firebase &> /dev/null; then
-  print_error "Firebase CLI no está instalado"
-  echo ""
-  echo "Instala con: npm install -g firebase-tools"
-  exit 1
-fi
-
-FIREBASE_VERSION=$(firebase --version)
-print_success "Firebase CLI instalado (v$FIREBASE_VERSION)"
-echo ""
-
-# 2. Verificar autenticación
+# Verificar autenticación
 echo "🔐 Verificando autenticación..."
-if ! firebase projects:list &> /dev/null; then
-  print_error "No estás autenticado con Firebase"
-  echo ""
-  print_info "Ejecuta: firebase login"
-  echo ""
-  read -p "¿Quieres hacer login ahora? (y/n): " -n 1 -r
-  echo ""
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    firebase login
-  else
-    print_error "Deployment cancelado"
-    exit 1
-  fi
-fi
-
-print_success "Autenticado con Firebase"
-echo ""
-
-# 3. Verificar proyecto
-echo "📂 Verificando proyecto..."
-PROJECT_ID=$(cat .firebaserc 2>/dev/null | grep -o '"default"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
-
-if [ -z "$PROJECT_ID" ]; then
-  print_error "No se pudo detectar el proyecto en .firebaserc"
-  exit 1
-fi
-
-print_success "Proyecto: $PROJECT_ID"
-echo ""
-
-# 4. Verificar App Check está habilitado
-echo "🔍 Verificando configuración de App Check..."
-if grep -q "// TEMP DISABLED" webapp/register.html; then
-  print_error "App Check está deshabilitado en algunos archivos"
-  print_info "Ejecuta: ./scripts/enable-appcheck-imports.sh"
-  exit 1
-fi
-
-print_success "App Check está habilitado"
-echo ""
-
-# 5. Preguntar confirmación
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📋 Resumen del Deployment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Proyecto:    $PROJECT_ID"
-echo "Branch:      $(git branch --show-current)"
-echo "Commit:      $(git rev-parse --short HEAD)"
-echo "URL Destino: https://$PROJECT_ID.web.app"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-read -p "¿Continuar con el deployment? (y/n): " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  print_warning "Deployment cancelado por el usuario"
-  exit 0
-fi
-
-echo ""
-
-# 6. Deploy
-echo "🚀 Iniciando deployment..."
-echo ""
-
-firebase deploy --only hosting --project "$PROJECT_ID"
-
-DEPLOY_EXIT_CODE=$?
-
-echo ""
-
-# 7. Resultado
-if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  print_success "DEPLOYMENT EXITOSO"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "🌐 URLs de Producción:"
-  echo "   https://$PROJECT_ID.web.app"
-  echo "   https://$PROJECT_ID.firebaseapp.com"
-  echo ""
-  echo "📝 Próximos Pasos:"
-  echo "   1. Abre: https://$PROJECT_ID.web.app/webapp/register.html"
-  echo "   2. Abre Console (F12) y verifica App Check se inicializa"
-  echo "   3. Prueba registro de usuario"
-  echo "   4. Verifica NO hay error 401"
-  echo ""
-  echo "🔗 Firebase Console:"
-  echo "   https://console.firebase.google.com/project/$PROJECT_ID"
-  echo ""
-  print_success "Deployment completado correctamente!"
-  echo ""
+if firebase projects:list > /dev/null 2>&1; then
+    echo "✅ Autenticado correctamente"
 else
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  print_error "DEPLOYMENT FALLÓ"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  print_info "Verifica los errores arriba"
-  echo ""
-  echo "Comandos útiles para troubleshooting:"
-  echo "   firebase login         - Re-autenticarse"
-  echo "   firebase projects:list - Ver proyectos disponibles"
-  echo "   firebase use $PROJECT_ID - Seleccionar proyecto"
-  echo ""
-  exit 1
+    echo "❌ No estás autenticado con Firebase"
+    echo "   Ejecuta: firebase login"
+    exit 1
+fi
+echo ""
+
+# Mostrar proyecto actual
+echo "📊 Proyecto Firebase:"
+cat .firebaserc | grep "default" | cut -d'"' -f4
+echo ""
+
+# Confirmar deployment
+echo "⚠️  Vas a deployar los siguientes componentes:"
+echo "   1. Cloud Functions (3 funciones)"
+echo "      - onUserDocCreate (auto-set custom claims)"
+echo "      - onUserDocUpdate (sync custom claims)"
+echo "      - syncChatACL (manage chat permissions)"
+echo ""
+echo "   2. Firestore Security Rules"
+echo "      - Rules con custom claims (role, gender)"
+echo "      - Protección por género"
+echo "      - Chat ACL"
+echo ""
+echo "   3. Storage Security Rules"
+echo "      - Profile photos por género"
+echo "      - Chat attachments"
+echo ""
+
+read -p "¿Continuar con el deployment? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Deployment cancelado"
+    exit 1
+fi
+
+echo ""
+echo "=================================================="
+echo "🚀 Iniciando Deployment..."
+echo "=================================================="
+echo ""
+
+# Deploy Functions
+echo "📦 1/3: Deploying Cloud Functions..."
+echo "-----------------------------------"
+firebase deploy --only functions
+FUNCTIONS_STATUS=$?
+echo ""
+
+# Deploy Firestore Rules
+echo "🔒 2/3: Deploying Firestore Rules..."
+echo "-----------------------------------"
+firebase deploy --only firestore:rules
+FIRESTORE_STATUS=$?
+echo ""
+
+# Deploy Storage Rules
+echo "💾 3/3: Deploying Storage Rules..."
+echo "-----------------------------------"
+firebase deploy --only storage
+STORAGE_STATUS=$?
+echo ""
+
+# Resumen
+echo "=================================================="
+echo "📊 Deployment Summary"
+echo "=================================================="
+echo ""
+
+if [ $FUNCTIONS_STATUS -eq 0 ]; then
+    echo "✅ Cloud Functions: SUCCESS"
+else
+    echo "❌ Cloud Functions: FAILED"
+fi
+
+if [ $FIRESTORE_STATUS -eq 0 ]; then
+    echo "✅ Firestore Rules: SUCCESS"
+else
+    echo "❌ Firestore Rules: FAILED"
+fi
+
+if [ $STORAGE_STATUS -eq 0 ]; then
+    echo "✅ Storage Rules: SUCCESS"
+else
+    echo "❌ Storage Rules: FAILED"
+fi
+
+echo ""
+
+# Verificar si todo fue exitoso
+if [ $FUNCTIONS_STATUS -eq 0 ] && [ $FIRESTORE_STATUS -eq 0 ] && [ $STORAGE_STATUS -eq 0 ]; then
+    echo "🎉 ¡DEPLOYMENT COMPLETADO EXITOSAMENTE!"
+    echo ""
+    echo "📋 Próximos pasos:"
+    echo "   1. Verifica las funciones en:"
+    echo "      https://console.firebase.google.com/project/tuscitasseguras-2d1a6/functions"
+    echo ""
+    echo "   2. Prueba tu app:"
+    echo "      firebase serve"
+    echo "      Abre: http://localhost:5000"
+    echo ""
+    echo "   3. Registra el debug token para App Check:"
+    echo "      Token: BCF51A42-7B5F-4009-B8D7-30AF50EA661B"
+    echo "      https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck"
+    echo ""
+    exit 0
+else
+    echo "⚠️  Deployment completado con errores"
+    echo "   Revisa los logs arriba para más detalles"
+    exit 1
 fi
