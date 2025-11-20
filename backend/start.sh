@@ -1,27 +1,22 @@
 #!/bin/bash
-set -e
+# Railway startup script with fallback
 
-echo "=== Starting TuCitaSegura FastAPI application ==="
-echo "Current directory: $(pwd)"
-echo "Python version: $(python --version)"
-echo "Python path: $(which python)"
+echo "=== Railway Startup Debug ==="
+echo "Directory: $(pwd)"
+echo "Files: $(ls -la)"
+echo "PORT: ${PORT:-8000}"
 
-echo "=== Checking for main.py ==="
-if [ -f "main.py" ]; then
-    echo "✓ main.py found"
-    echo "Contents of main.py:"
-    head -10 main.py
+# Instalar dependencias básicas
+pip install fastapi uvicorn python-multipart pydantic
+
+echo "=== Testing main.py import ==="
+if python -c "import main" 2>/dev/null; then
+    echo "✓ main.py can be imported"
+    START_CMD="uvicorn main:app"
 else
-    echo "✗ main.py NOT found"
-    echo "Contents of current directory:"
-    ls -la
+    echo "✗ main.py import failed, using backup app"
+    START_CMD="uvicorn app:app"
 fi
 
-echo "=== Checking Python packages ==="
-pip list | grep -E "(fastapi|uvicorn)" || echo "FastAPI/Uvicorn not found"
-
-echo "=== Installing requirements ==="
-pip install -r requirements.txt
-
-echo "=== Starting uvicorn server ==="
-exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4
+echo "=== Starting server with: $START_CMD ==="
+exec $START_CMD --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --log-level debug
