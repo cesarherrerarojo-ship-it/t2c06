@@ -1,0 +1,12 @@
+{
+  "name": "tuscitasseguras-backend",
+  "version": "1.0.0",
+  "description": "Backend de TuCitaSegura - FastAPI Python",
+  "private": true,
+  "engines": {
+    "node": "false"
+  },
+  "scripts": {
+    "start": "echo 'This is a Python backend, not Node.js' && exit 1"
+  }
+}
