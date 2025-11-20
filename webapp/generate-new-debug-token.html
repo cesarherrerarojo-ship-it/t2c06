@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generar Nuevo Debug Token - TuCitaSegura</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-900 to-purple-900 min-h-screen flex items-center justify-center p-4">
+
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+    <div class="text-center mb-6">
+      <div class="inline-block bg-blue-500 p-4 rounded-full mb-4">
+        <i class="fas fa-key text-white text-4xl"></i>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Generar Nuevo Debug Token</h1>
+      <p class="text-gray-600">Herramienta para App Check Debugging</p>
+    </div>
+
+    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+      <div class="flex items-start">
+        <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
+        <div>
+          <h3 class="font-bold text-yellow-800">Instrucciones</h3>
+          <p class="text-sm text-yellow-700 mt-1">
+            Esta página genera un nuevo debug token para Firebase App Check.
+            Usa esto solo si el token anterior no funciona.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <!-- Token generado -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <i class="fas fa-fingerprint mr-2"></i>Tu Debug Token Actual
+        </label>
+        <div class="bg-gray-100 border border-gray-300 rounded-lg p-4 font-mono text-sm break-all">
+          <code id="currentToken" class="text-blue-600">Cargando...</code>
+        </div>
+        <button id="copyBtn" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+          <i class="fas fa-copy mr-2"></i>Copiar Token
+        </button>
+      </div>
+
+      <!-- Estado -->
+      <div id="status" class="hidden">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <i class="fas fa-info-circle mr-2"></i>Estado de App Check
+        </label>
+        <div id="statusContent" class="bg-gray-50 border rounded-lg p-4 text-sm"></div>
+      </div>
+
+      <!-- Instrucciones paso a paso -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="font-bold text-blue-900 mb-3 flex items-center">
+          <i class="fas fa-list-ol mr-2"></i>Pasos para Registrar el Token
+        </h3>
+        <ol class="space-y-2 text-sm text-blue-800">
+          <li class="flex items-start">
+            <span class="font-bold mr-2">1.</span>
+            <span>Copia el token de arriba usando el botón "Copiar Token"</span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">2.</span>
+            <span>Ve a <a href="https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck" target="_blank" class="text-blue-600 underline">Firebase Console App Check</a></span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">3.</span>
+            <span>Haz click en "Manage debug tokens"</span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">4.</span>
+            <span>Haz click en "+ Add debug token"</span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">5.</span>
+            <span>Pega el token y dale un nombre (ej: "Local Development")</span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">6.</span>
+            <span>Haz click en "Save"</span>
+          </li>
+          <li class="flex items-start">
+            <span class="font-bold mr-2">7.</span>
+            <span>Recarga esta página (Ctrl + Shift + R)</span>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Botón de regenerar -->
+      <div class="text-center pt-4">
+        <button id="regenerateBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition">
+          <i class="fas fa-sync-alt mr-2"></i>Generar Nuevo Token
+        </button>
+        <p class="text-xs text-gray-500 mt-2">
+          Esto borrará el token actual y creará uno nuevo
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+      <a href="/webapp/buscar-usuarios.html" class="text-blue-600 hover:text-blue-800 transition">
+        <i class="fas fa-arrow-left mr-2"></i>Volver a la Aplicación
+      </a>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg hidden transition-all">
+    <i class="fas fa-check-circle mr-2"></i><span id="toastMessage">Token copiado</span>
+  </div>
+
+  <script type="module">
+    import './js/firebase-appcheck.js';
+    import { auth } from './js/firebase-config.js';
+
+    const currentTokenEl = document.getElementById('currentToken');
+    const copyBtn = document.getElementById('copyBtn');
+    const regenerateBtn = document.getElementById('regenerateBtn');
+    const statusEl = document.getElementById('status');
+    const statusContentEl = document.getElementById('statusContent');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+
+    // Obtener el debug token actual
+    function getCurrentDebugToken() {
+      const token = localStorage.getItem('FIREBASE_APPCHECK_DEBUG_TOKEN');
+      if (token) {
+        currentTokenEl.textContent = token;
+        currentTokenEl.classList.add('text-green-600');
+        checkAppCheckStatus();
+      } else {
+        currentTokenEl.textContent = 'No se encontró token. Generando...';
+        currentTokenEl.classList.add('text-orange-600');
+        // El token se generará automáticamente por firebase-appcheck.js
+        setTimeout(() => {
+          const newToken = localStorage.getItem('FIREBASE_APPCHECK_DEBUG_TOKEN');
+          if (newToken) {
+            currentTokenEl.textContent = newToken;
+            currentTokenEl.classList.remove('text-orange-600');
+            currentTokenEl.classList.add('text-green-600');
+            checkAppCheckStatus();
+          }
+        }, 2000);
+      }
+    }
+
+    // Verificar estado de App Check
+    async function checkAppCheckStatus() {
+      statusEl.classList.remove('hidden');
+      statusContentEl.innerHTML = '<div class="animate-pulse">Verificando conexión con Firebase...</div>';
+
+      try {
+        // Intentar obtener un token de App Check
+        const { getToken } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js');
+        const { appCheck } = await import('./js/firebase-appcheck.js');
+
+        const token = await getToken(appCheck);
+
+        if (token) {
+          statusContentEl.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
+              <div>
+                <p class="font-bold text-green-700">✅ App Check funcionando correctamente</p>
+                <p class="text-gray-600 text-xs mt-1">Token obtenido exitosamente</p>
+                <p class="text-gray-500 text-xs mt-2 font-mono break-all">
+                  ${token.token.substring(0, 50)}...
+                </p>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Error verificando App Check:', error);
+
+        if (error.code === 'app-check/fetch-status-error' || error.message.includes('403')) {
+          statusContentEl.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <i class="fas fa-exclamation-circle text-red-500 text-xl mt-1"></i>
+              <div>
+                <p class="font-bold text-red-700">❌ Debug token no registrado</p>
+                <p class="text-gray-600 text-xs mt-1">
+                  El token existe localmente pero no está registrado en Firebase Console.
+                </p>
+                <p class="text-gray-600 text-xs mt-2">
+                  <strong>Acción requerida:</strong> Sigue los pasos de arriba para registrar el token.
+                </p>
+              </div>
+            </div>
+          `;
+        } else {
+          statusContentEl.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <i class="fas fa-times-circle text-orange-500 text-xl mt-1"></i>
+              <div>
+                <p class="font-bold text-orange-700">⚠️ Error al verificar App Check</p>
+                <p class="text-gray-600 text-xs mt-1">${error.message}</p>
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Copiar token al portapapeles
+    copyBtn.addEventListener('click', () => {
+      const token = currentTokenEl.textContent;
+      navigator.clipboard.writeText(token).then(() => {
+        showToast('✅ Token copiado al portapapeles');
+      }).catch(() => {
+        // Fallback para navegadores antiguos
+        const textArea = document.createElement('textarea');
+        textArea.value = token;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('✅ Token copiado al portapapeles');
+      });
+    });
+
+    // Regenerar token
+    regenerateBtn.addEventListener('click', () => {
+      if (confirm('¿Estás seguro? Esto borrará el token actual y creará uno nuevo. Necesitarás registrar el nuevo token en Firebase Console.')) {
+        localStorage.removeItem('FIREBASE_APPCHECK_DEBUG_TOKEN');
+        showToast('🔄 Token eliminado. Recargando...');
+        setTimeout(() => {
+          location.reload();
+        }, 1500);
+      }
+    });
+
+    // Mostrar toast
+    function showToast(message) {
+      toastMessage.textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Inicializar
+    getCurrentDebugToken();
+  </script>
+
+</body>
+</html>
