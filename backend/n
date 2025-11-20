@@ -1,0 +1,6 @@
+#!/bin/bash
+# This is a workaround for Railway's invalid startCommand="n"
+echo "Railway workaround: executing Python FastAPI application"
+cd /app
+chmod +x start.sh
+./start.sh
