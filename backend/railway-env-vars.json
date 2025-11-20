@@ -1,0 +1,95 @@
+{
+  "variables": [
+    {
+      "name": "FIREBASE_PROJECT_ID",
+      "description": "Project ID from your Firebase service account JSON file",
+      "value": "tuscitasseguras-2d1a6",
+      "required": true
+    },
+    {
+      "name": "FIREBASE_DATABASE_URL",
+      "description": "Firebase Realtime Database URL",
+      "value": "https://tuscitasseguras-2d1a6-default-rtdb.europe-west1.firebasedatabase.app",
+      "required": true
+    },
+    {
+      "name": "SECRET_KEY",
+      "description": "Secret key for application security",
+      "value": "COLOCA_TU_SECRET_KEY_AQUI",
+      "required": true
+    },
+    {
+      "name": "ENVIRONMENT",
+      "description": "Application environment",
+      "value": "production",
+      "required": true
+    },
+    {
+      "name": "DEBUG",
+      "description": "Debug mode (true/false)",
+      "value": "false",
+      "required": true
+    },
+    {
+      "name": "API_WORKERS",
+      "description": "Number of API workers",
+      "value": "4",
+      "required": true
+    },
+    {
+      "name": "PYTHON_VERSION",
+      "description": "Python version",
+      "value": "3.11.0",
+      "required": true
+    },
+    {
+      "name": "CORS_ORIGINS",
+      "description": "Allowed CORS origins",
+      "value": "https://tucitasegura.com,https://www.tucitasegura.com",
+      "required": true
+    },
+    {
+      "name": "STRIPE_SECRET_KEY",
+      "description": "Stripe secret key (if you have Stripe account)",
+      "value": "COLOCA_TU_STRIPE_SECRET_KEY_AQUI",
+      "required": false
+    },
+    {
+      "name": "STRIPE_PUBLISHABLE_KEY",
+      "description": "Stripe publishable key (if you have Stripe account)",
+      "value": "COLOCA_TU_STRIPE_PUBLISHABLE_KEY_AQUI",
+      "required": false
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "description": "Stripe webhook secret (if you have Stripe account)",
+      "value": "COLOCA_TU_STRIPE_WEBHOOK_SECRET_AQUI",
+      "required": false
+    },
+    {
+      "name": "GOOGLE_MAPS_API_KEY",
+      "description": "Google Maps API key (if you have Google Cloud account)",
+      "value": "COLOCA_TU_API_KEY_AQUI",
+      "required": false
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "description": "OpenAI API key (if you have OpenAI account)",
+      "value": "sk-COLOCA_TU_API_KEY_AQUI",
+      "required": false
+    },
+    {
+      "name": "SENTRY_DSN",
+      "description": "Sentry DSN for error tracking (optional)",
+      "value": "https://COLOCA_TU_DSN_AQUI",
+      "required": false
+    }
+  ],
+  "notes": {
+    "firebase": "Abre tu archivo JSON y copia el valor de 'project_id'",
+    "stripe": "Opcional - solo si tienes cuenta de Stripe",
+    "google_maps": "Opcional - solo si necesitas Google Maps",
+    "openai": "Opcional - solo si usas OpenAI",
+    "sentry": "Opcional - para monitoreo de errores"
+  }
+}
