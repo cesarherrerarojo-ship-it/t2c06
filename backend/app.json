@@ -1,0 +1,17 @@
+{
+  "name": "tuscitasseguras-backend",
+  "description": "Backend de TuCitaSegura - FastAPI Python",
+  "repository": "https://github.com/cesarherrerarojo-ship-it/t2c06",
+  "stack": "python",
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "env": {
+    "PYTHON_VERSION": {
+      "description": "Python version",
+      "value": "3.11.0"
+    }
+  }
+}
