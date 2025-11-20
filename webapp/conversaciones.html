@@ -156,7 +156,7 @@
   </div>
 
   <!-- Block User Confirmation Modal -->
-  <div id="blockModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+  <div id="blockModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full p-8">
       <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
         <i class="fas fa-ban text-4xl text-red-400"></i>
@@ -178,11 +178,11 @@
 
   <!-- Firebase SDK -->
   <!-- Error Fixes -->
-  <script src="/webapp/js/error-fixes.js"></script>
+  <script type="module" src="/webapp/js/error-fixes.js"></script>
 
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -534,12 +534,12 @@
       const conv = conversations.find(c => c.id === selectedConversationId);
       if (conv) {
         document.getElementById('blockUserName').textContent = conv.otherUser.alias || 'Este usuario';
-        document.getElementById('blockModal').classList.remove('hidden');
+        document.getElementById('blockModal').classList.remove('opacity-0', 'pointer-events-none');
       }
     };
 
     window.closeBlockModal = function() {
-      document.getElementById('blockModal').classList.add('hidden');
+      document.getElementById('blockModal').classList.add('opacity-0', 'pointer-events-none');
     };
 
     window.confirmBlock = async function() {

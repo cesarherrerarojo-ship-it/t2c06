@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión - TuCitaSegura (Debug Mode)</title>
+
+  <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="./css/output.css">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    input:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Debug styles */
+    .debug-panel {
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .debug-error {
+      color: #ff4444;
+    }
+    
+    .debug-success {
+      color: #44ff44;
+    }
+    
+    .debug-warning {
+      color: #ffff44;
+    }
+  </style>
+</head>
+<body class="text-white">
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <i class="fas fa-shield-alt text-2xl text-purple-300"></i>
+          <h1 class="text-xl font-bold">TuCitaSegura</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-sm bg-red-500 px-2 py-1 rounded">DEBUG MODE</span>
+          <button onclick="toggleDebugPanel()" class="text-sm bg-blue-500 px-3 py-1 rounded hover:bg-blue-600">
+            <i class="fas fa-bug mr-1"></i>Debug Panel
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md">
+      
+      <!-- Debug Panel (Hidden by default) -->
+      <div id="debugPanel" class="mb-4 debug-panel rounded-lg p-4 hidden">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-lg font-bold">Debug Console</h3>
+          <button onclick="clearDebugLog()" class="text-xs bg-red-600 px-2 py-1 rounded">Clear</button>
+        </div>
+        <div id="debugLog" class="space-y-1"></div>
+      </div>
+
+      <!-- Login Form -->
+      <div class="glass-strong rounded-2xl p-8 fade-in">
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-user text-2xl text-white"></i>
+          </div>
+          <h2 class="text-2xl font-bold mb-2">Iniciar Sesión</h2>
+          <p class="text-gray-300">Debug Mode - Alternative Authentication</p>
+        </div>
+
+        <!-- Quick Test Buttons -->
+        <div class="mb-6 space-y-2">
+          <button onclick="testConnection()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition duration-200">
+            <i class="fas fa-plug mr-2"></i>Test Firebase Connection
+          </button>
+          <button onclick="testAnonymousAuth()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-200">
+            <i class="fas fa-user-secret mr-2"></i>Test Anonymous Auth
+          </button>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium mb-2" for="email">Correo Electrónico</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <i class="fas fa-envelope"></i>
+              </span>
+              <input type="email" id="email" name="email" required
+                     class="w-full pl-10 pr-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-300"
+                     placeholder="tu@email.com"
+                     value="cesar.herrera.rojo@gmail.com">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2" for="password">Contraseña</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input type="password" id="password" name="password" required
+                     class="w-full pl-10 pr-10 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-300"
+                     placeholder="••••••••">
+              <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                <i class="fas fa-eye" id="toggleIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center">
+              <input type="checkbox" id="rememberMe" name="rememberMe" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+              <span class="ml-2 text-sm text-gray-300">Recuérdame</span>
+            </label>
+            <a href="#" onclick="showForgotPassword()" class="text-sm text-purple-300 hover:text-purple-200">¿Olvidaste tu contraseña?</a>
+          </div>
+
+          <button type="submit" id="loginButton" 
+                  class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+            <span id="loginButtonText">
+              <i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión
+            </span>
+            <span id="loginButtonLoading" class="hidden">
+              <i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesión...
+            </span>
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-gray-300">¿No tienes una cuenta? 
+            <a href="register.html" class="text-purple-300 hover:text-purple-200 font-medium">Regístrate aquí</a>
+          </p>
+        </div>
+
+        <!-- Alternative Login Methods -->
+        <div class="mt-8">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-white border-opacity-20"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-gradient-to-r from-purple-900 to-pink-900 text-gray-300">O continúa con</span>
+            </div>
+          </div>
+
+          <div class="mt-6 grid grid-cols-2 gap-3">
+            <button onclick="loginWithGoogle()" class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-500 hover:bg-gray-50">
+              <i class="fab fa-google"></i>
+            </button>
+            <button onclick="loginWithFacebook()" class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-500 hover:bg-gray-50">
+              <i class="fab fa-facebook-f"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast" class="fixed top-20 right-4 transform translate-x-full transition-transform duration-300 z-50">
+    <div class="bg-white text-gray-900 px-6 py-3 rounded-lg shadow-lg flex items-center">
+      <i id="toastIcon" class="fas fa-check-circle text-green-500 mr-2"></i>
+      <span id="toastMessage"></span>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+    // Import alternative authentication
+    import { auth, safeSignInWithEmailAndPassword, debugAuthConfiguration } from './js/firebase-auth-alternative.js';
+    import { 
+      signInWithRedirect, 
+      getRedirectResult, 
+      GoogleAuthProvider, 
+      FacebookAuthProvider,
+      browserLocalPersistence,
+      browserSessionPersistence,
+      setPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    
+    // Make functions available globally
+    window.auth = auth;
+    window.safeSignInWithEmailAndPassword = safeSignInWithEmailAndPassword;
+    window.debugAuthConfiguration = debugAuthConfiguration;
+    window.signInWithRedirect = signInWithRedirect;
+    window.getRedirectResult = getRedirectResult;
+    window.GoogleAuthProvider = GoogleAuthProvider;
+    window.FacebookAuthProvider = FacebookAuthProvider;
+    window.browserLocalPersistence = browserLocalPersistence;
+    window.browserSessionPersistence = browserSessionPersistence;
+    window.setPersistence = setPersistence;
+
+    // Debug logging function
+    function debugLog(message, type = 'info') {
+      const debugLogDiv = document.getElementById('debugLog');
+      const timestamp = new Date().toLocaleTimeString();
+      const colorClass = type === 'error' ? 'debug-error' : type === 'success' ? 'debug-success' : type === 'warning' ? 'debug-warning' : '';
+      
+      const logEntry = document.createElement('div');
+      logEntry.className = colorClass;
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      
+      debugLogDiv.appendChild(logEntry);
+      debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
+      
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    // Make debugLog available globally
+    window.debugLog = debugLog;
+
+    // Initialize debug
+    debugLog('🚀 Debug login page loaded', 'info');
+    debugLog(`📍 Current hostname: ${location.hostname}`, 'info');
+    debugLog(`🔐 Auth domain: ${auth.config?.authDomain || 'Not available'}`, 'info');
+
+    // Test Firebase configuration on load
+    setTimeout(async () => {
+      debugLog('🧪 Testing Firebase configuration...', 'info');
+      const configResult = await debugAuthConfiguration();
+      if (configResult) {
+        debugLog('✅ Firebase Auth API is reachable', 'success');
+      } else {
+        debugLog('⚠️  Firebase Auth API may have connectivity issues', 'warning');
+      }
+    }, 1000);
+
+    // Login form submission
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const rememberMe = document.getElementById('rememberMe').checked;
+      const loginButton = document.getElementById('loginButton');
+      const loginButtonText = document.getElementById('loginButtonText');
+      const loginButtonLoading = document.getElementById('loginButtonLoading');
+
+      debugLog(`🔐 Attempting login for: ${email}`, 'info');
+
+      // Disable button and show loading
+      loginButton.disabled = true;
+      loginButtonText.classList.add('hidden');
+      loginButtonLoading.classList.remove('hidden');
+
+      try {
+        // Set persistence
+        debugLog(`💾 Setting persistence: ${rememberMe ? 'local' : 'session'}`, 'info');
+        const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+        await setPersistence(auth, persistence);
+        debugLog('✅ Persistence set successfully', 'success');
+
+        // Try alternative authentication
+        debugLog('🔄 Attempting alternative authentication method...', 'info');
+        const userCredential = await safeSignInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        debugLog(`✅ Authentication successful! User ID: ${user.uid}`, 'success');
+        debugLog(`📧 Email: ${user.email}`, 'info');
+        debugLog(`✅ Email verified: ${user.emailVerified}`, 'info');
+
+        // Show success
+        showToast('¡Bienvenido de vuelta!', 'success');
+
+        // Redirect to app
+        debugLog('🔄 Redirecting to app...', 'info');
+        setTimeout(() => {
+          window.location.href = '/webapp/buscar-usuarios.html';
+        }, 1000);
+
+      } catch (error) {
+        debugLog(`❌ Authentication failed: ${error.code} - ${error.message}`, 'error');
+        console.error('Login error:', error);
+
+        // Detailed error analysis
+        if (error.code === 'auth/internal-error' && error.message.includes('Cloud Function')) {
+          debugLog('🚨 CRITICAL: Cloud Function routing detected!', 'error');
+          debugLog('💡 Suggestion: Check Firebase Console App Check settings', 'warning');
+          showToast('Error: Autenticación bloqueada por configuración de Cloud Functions', 'error');
+        } else if (error.code === 'auth/user-not-found') {
+          showToast('Usuario no encontrado', 'error');
+        } else if (error.code === 'auth/wrong-password') {
+          showToast('Contraseña incorrecta', 'error');
+        } else if (error.code === 'auth/invalid-email') {
+          showToast('Email inválido', 'error');
+        } else if (error.code === 'auth/user-disabled') {
+          showToast('Usuario deshabilitado', 'error');
+        } else {
+          showToast(`Error: ${error.message}`, 'error');
+        }
+
+      } finally {
+        // Re-enable button
+        loginButton.disabled = false;
+        loginButtonText.classList.remove('hidden');
+        loginButtonLoading.classList.add('hidden');
+      }
+    });
+
+    // Debug functions
+    window.testConnection = async function() {
+      debugLog('🧪 Testing connection to Firebase...', 'info');
+      try {
+        const result = await debugAuthConfiguration();
+        if (result) {
+          debugLog('✅ Connection test successful', 'success');
+          showToast('✅ Conexión exitosa', 'success');
+        } else {
+          debugLog('⚠️  Connection test failed', 'warning');
+          showToast('⚠️  Problema de conexión detectado', 'warning');
+        }
+      } catch (error) {
+        debugLog(`❌ Connection test error: ${error.message}`, 'error');
+        showToast('❌ Error en conexión', 'error');
+      }
+    };
+
+    window.testAnonymousAuth = async function() {
+      debugLog('🧪 Testing anonymous authentication...', 'info');
+      try {
+        const { signInAnonymously } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+        const userCredential = await signInAnonymously(auth);
+        debugLog(`✅ Anonymous auth successful! User ID: ${userCredential.user.uid}`, 'success');
+        showToast('✅ Auth anónimo exitoso', 'success');
+        
+        // Sign out immediately
+        await auth.signOut();
+        debugLog('✅ Anonymous user signed out', 'info');
+        
+      } catch (error) {
+        debugLog(`❌ Anonymous auth failed: ${error.code} - ${error.message}`, 'error');
+        showToast('❌ Auth anónimo falló', 'error');
+      }
+    };
+
+    // Other functions
+    window.togglePassword = function() {
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = document.getElementById('toggleIcon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fas fa-eye-slash';
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fas fa-eye';
+      }
+    };
+
+    window.toggleDebugPanel = function() {
+      const panel = document.getElementById('debugPanel');
+      panel.classList.toggle('hidden');
+    };
+
+    window.clearDebugLog = function() {
+      document.getElementById('debugLog').innerHTML = '';
+      debugLog('🗑️ Debug log cleared', 'info');
+    };
+
+    window.showToast = function(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+      
+      // Set icon based on type
+      if (type === 'success') {
+        toastIcon.className = 'fas fa-check-circle text-green-500 mr-2';
+      } else if (type === 'error') {
+        toastIcon.className = 'fas fa-exclamation-circle text-red-500 mr-2';
+      } else if (type === 'warning') {
+        toastIcon.className = 'fas fa-exclamation-triangle text-yellow-500 mr-2';
+      }
+      
+      toastMessage.textContent = message;
+      toast.classList.remove('translate-x-full');
+      
+      setTimeout(() => {
+        toast.classList.add('translate-x-full');
+      }, 3000);
+    };
+
+    window.showForgotPassword = function() {
+      debugLog('🔄 Redirecting to password reset...', 'info');
+      window.location.href = '#forgot-password';
+    };
+
+    window.loginWithGoogle = function() {
+      debugLog('🔄 Google login not implemented in debug mode', 'warning');
+      showToast('Google login not available in debug mode', 'warning');
+    };
+
+    window.loginWithFacebook = function() {
+      debugLog('🔄 Facebook login not implemented in debug mode', 'warning');
+      showToast('Facebook login not available in debug mode', 'warning');
+    };
+
+    // Check auth state on load
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        debugLog(`👤 User already authenticated: ${user.uid}`, 'info');
+        debugLog(`📧 Email: ${user.email}`, 'info');
+        
+        // Auto-redirect if user is already logged in
+        setTimeout(() => {
+          window.location.href = '/webapp/buscar-usuarios.html';
+        }, 2000);
+      } else {
+        debugLog('👤 No user currently authenticated', 'info');
+      }
+    });
+
+  </script>
+</body>
+</html>

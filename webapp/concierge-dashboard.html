@@ -263,7 +263,7 @@
   </div>
 
   <!-- Create Event Modal -->
-  <div id="createEventModal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+  <div id="createEventModal" class="opacity-0 pointer-events-none fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
     <div class="glass-container max-w-3xl w-full max-h-[90vh] overflow-y-auto p-8">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-white text-2xl font-bold">
@@ -408,12 +408,12 @@
   </div>
 
   <!-- Error Fixes -->
-  <script src="/webapp/js/error-fixes.js"></script>
+  <script type="module" src="/webapp/js/error-fixes.js"></script>
 
   <!-- Firebase Scripts -->
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -643,15 +643,15 @@
 
     // Create Event Modal
     document.getElementById('createEventBtn').addEventListener('click', () => {
-      document.getElementById('createEventModal').classList.remove('hidden');
+      document.getElementById('createEventModal').classList.remove('opacity-0', 'pointer-events-none');
     });
 
     document.getElementById('closeModalBtn').addEventListener('click', () => {
-      document.getElementById('createEventModal').classList.add('hidden');
+      document.getElementById('createEventModal').classList.add('opacity-0', 'pointer-events-none');
     });
 
     document.getElementById('cancelCreateBtn').addEventListener('click', () => {
-      document.getElementById('createEventModal').classList.add('hidden');
+      document.getElementById('createEventModal').classList.add('opacity-0', 'pointer-events-none');
     });
 
     // Create Event Form Submit
@@ -709,7 +709,7 @@
         showToast('Evento VIP creado exitosamente', 'success');
 
         // Close modal and reset form
-        document.getElementById('createEventModal').classList.add('hidden');
+        document.getElementById('createEventModal').classList.add('opacity-0', 'pointer-events-none');
         document.getElementById('createEventForm').reset();
 
         // Reload events

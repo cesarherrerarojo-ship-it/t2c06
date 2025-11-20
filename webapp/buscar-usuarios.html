@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./css/output.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<<<<<<< HEAD
 
   <!--
     ⚠️ CRITICAL: Google Maps API Configuration Required
@@ -24,6 +25,10 @@
     Status: 🔴 NOT CONFIGURED - Map will NOT work without valid API key
   -->
   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
+=======
+  <!-- Google Maps API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AQ.Ab8RN6I6FQgaC1SltCBdMTyt6mM49BUATqwB32I7g5crKb91Vg&libraries=places,geometry"></script>
+>>>>>>> origin/claude/add-api-key-integration-011CUyqdyCeFEB4PHX2XZJn9
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -270,13 +275,13 @@
         <a href="/webapp/conversaciones.html" class="hover:text-blue-400 transition flex items-center gap-2 relative">
           <i class="fas fa-comments"></i>
           <span class="hidden md:inline">Mensajes</span>
-          <span id="unreadBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+          <span id="unreadBadge" class="invisible absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
         </a>
         <a href="/webapp/citas.html" class="hover:text-blue-400 transition flex items-center gap-2">
           <i class="fas fa-calendar-check"></i>
           <span class="hidden md:inline">Mis Citas</span>
         </a>
-        <a href="/webapp/eventos-vip.html" id="vipEventsBtn" class="hidden hover:text-pink-400 transition flex items-center gap-2 relative">
+        <a href="/webapp/eventos-vip.html" id="vipEventsBtn" class="opacity-0 pointer-events-none hover:text-pink-400 transition flex items-center gap-2 relative">
           <i class="fas fa-gem text-pink-400"></i>
           <span class="hidden md:inline font-semibold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">Eventos VIP</span>
           <span class="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">💎</span>
@@ -313,6 +318,12 @@
               <i class="fas fa-users mr-2"></i>
               <span id="userCount" class="font-semibold text-blue-400">0</span> usuarios disponibles
             </p>
+            <div class="mt-2 p-2 bg-blue-500/20 border border-blue-400/30 rounded-lg">
+              <p class="text-xs text-blue-300">
+                <i class="fas fa-info-circle mr-1"></i>
+                <strong>Plataforma exclusivamente heterosexual:</strong> Solo verás personas del género opuesto
+              </p>
+            </div>
           </div>
           <div class="flex items-center gap-3">
             <!-- View Toggle -->
@@ -526,7 +537,7 @@
   </main>
 
   <!-- Payment Required Modal -->
-  <div id="paymentModal" class="hidden fixed inset-0 bg-black/80 modal-backdrop flex items-center justify-center z-[60] p-4">
+  <div id="paymentModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 modal-backdrop flex items-center justify-center z-[60] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full modal-content">
       <div class="p-8 text-center">
         <div class="w-20 h-20 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -553,7 +564,7 @@
   </div>
 
   <!-- User Details Modal -->
-  <div id="userModal" class="hidden fixed inset-0 bg-black/70 modal-backdrop flex items-center justify-center z-50 p-4">
+  <div id="userModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/70 modal-backdrop flex items-center justify-center z-50 p-4">
     <div class="glass-strong rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-content">
 
       <!-- Modal Header -->
@@ -652,10 +663,43 @@
 
   <!-- Error Fixes -->
   <script src="/webapp/js/error-fixes.js"></script>
+  
+  <!-- Demo Mode Banner -->
+  <script src="/webapp/js/demo-banner.js"></script>
+  
+  <!-- Demo Mode Utilities -->
+  <script type="module">
+    import { isDemoMode, getDemoUser, getDemoAuthState } from './js/demo-mode.js';
+    
+    // Override auth checks for demo mode
+    window.checkDemoAuth = function() {
+      if (isDemoMode()) {
+        const demoUser = getDemoUser();
+        if (demoUser) {
+          // Simulate authenticated user
+          return {
+            uid: demoUser.uid,
+            email: demoUser.email,
+            emailVerified: true,
+            isDemo: true
+          };
+        }
+      }
+      return null;
+    };
+    
+    // Override email verification check for demo
+    window.checkDemoEmailVerified = function() {
+      if (isDemoMode()) {
+        return true; // Demo users are always "verified"
+      }
+      return null;
+    };
+  </script>
 
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -907,6 +951,35 @@
 
     // Auth Check
     onAuthStateChanged(auth, async (user) => {
+      // Check for demo mode first
+      const demoAuth = window.checkDemoAuth();
+      if (demoAuth) {
+        console.log('🎯 Demo mode active - bypassing Firebase auth');
+        currentUser = { uid: demoAuth.uid, email: demoAuth.email, emailVerified: true };
+        
+        // Create mock user data for demo
+        currentUserData = {
+          id: demoAuth.uid,
+          email: demoAuth.email,
+          alias: 'Usuario Demo',
+          gender: 'masculino',
+          birthDate: '1990-01-01',
+          reputation: 'BRONCE',
+          hasActiveSubscription: false,
+          hasAntiGhostingInsurance: false,
+          location: { lat: 40.4168, lng: -3.7038 }
+        };
+        
+        await loadUserMatches();
+        initMap();
+        await loadUsers();
+        loadSavedFilters();
+        updatePaymentStatusBanner();
+        return;
+      }
+      
+      const SUPER_USERS = ['gonzalo.hrrj@gmail.com','lacasitadebarajas@gmail.com'];
+      const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
       if (!user) {
         window.location.href = '/webapp/login.html';
         return;
@@ -914,8 +987,10 @@
 
       if (!user.emailVerified) {
         showToast('Verifica tu email primero', 'warning');
-        window.location.href = '/webapp/perfil.html';
-        return;
+        if (!isDev && !SUPER_USERS.includes(user.email)) {
+          window.location.href = '/webapp/perfil.html';
+          return;
+        }
       }
 
       currentUser = user;
@@ -928,6 +1003,9 @@
 
     // Payment Validation Functions
     function checkPaymentStatus() {
+      if (SUPER_USERS.includes(currentUser.email)) {
+        return { canUse: true, reason: null };
+      }
       // Regla de negocio: Por ahora solo los hombres pagan
       const userMustPay = currentUserData.gender === 'masculino';
 
@@ -1032,10 +1110,14 @@
         goToPaymentBtn.onclick = () => window.location.href = '/webapp/seguro.html';
       }
 
-      paymentModal.classList.remove('hidden');
+      paymentModal.classList.remove('opacity-0', 'pointer-events-none');
     }
 
     function updatePaymentStatusBanner() {
+      if (SUPER_USERS.includes(currentUser.email)) {
+        paymentStatusBanner.classList.add('hidden');
+        return;
+      }
       const userMustPay = currentUserData.gender === 'masculino';
 
       if (!userMustPay) {
@@ -1086,7 +1168,7 @@
                 <p class="text-sm text-slate-300">Falta: ${missingItems.join(' y ')}</p>
               </div>
             </div>
-            <button onclick="document.getElementById('paymentModal').classList.remove('hidden')" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-semibold text-black">
+            <button onclick="document.getElementById('paymentModal').classList.remove('opacity-0','pointer-events-none')" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-semibold text-black">
               <i class="fas fa-credit-card mr-2"></i>Completar Pagos
             </button>
           </div>
@@ -1117,7 +1199,7 @@
           if (currentUserData.gender === 'femenino') {
             const vipEventsBtn = document.getElementById('vipEventsBtn');
             if (vipEventsBtn) {
-              vipEventsBtn.classList.remove('hidden');
+              vipEventsBtn.classList.remove('opacity-0', 'pointer-events-none');
             }
           }
         }
@@ -1516,7 +1598,7 @@
         sendMatchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
       }
 
-      userModal.classList.remove('hidden');
+      userModal.classList.remove('opacity-0', 'pointer-events-none');
     }
 
     // Helper function to create conversation
@@ -1720,11 +1802,11 @@
     });
 
     closeModal.addEventListener('click', () => {
-      userModal.classList.add('hidden');
+      userModal.classList.add('opacity-0', 'pointer-events-none');
     });
 
     skipUserBtn.addEventListener('click', () => {
-      userModal.classList.add('hidden');
+      userModal.classList.add('opacity-0', 'pointer-events-none');
     });
 
     sendMatchBtn.addEventListener('click', async () => {
@@ -1733,7 +1815,7 @@
       // ✅ VALIDACIÓN DE PAGOS
       const paymentStatus = checkPaymentStatus();
       if (!paymentStatus.canUse) {
-        userModal.classList.add('hidden'); // Cerrar modal de usuario
+        userModal.classList.add('opacity-0', 'pointer-events-none'); // Cerrar modal de usuario
         showPaymentRequiredModal(paymentStatus.reason, paymentStatus.title, paymentStatus.message);
         return;
       }
@@ -1784,18 +1866,18 @@
 
     userModal.addEventListener('click', (e) => {
       if (e.target === userModal) {
-        userModal.classList.add('hidden');
+        userModal.classList.add('opacity-0', 'pointer-events-none');
       }
     });
 
     // Payment Modal event listeners
     closePaymentModal.addEventListener('click', () => {
-      paymentModal.classList.add('hidden');
+      paymentModal.classList.add('opacity-0', 'pointer-events-none');
     });
 
     paymentModal.addEventListener('click', (e) => {
       if (e.target === paymentModal) {
-        paymentModal.classList.add('hidden');
+        paymentModal.classList.add('opacity-0', 'pointer-events-none');
       }
     });
   </script>

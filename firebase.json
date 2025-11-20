@@ -19,6 +19,7 @@
     ]
   },
   "hosting": {
+    "site": "tuscitasseguras-2d1a6",
     "public": ".",
     "ignore": [
       "firebase.json",
@@ -38,11 +39,20 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)",
+        "source": "**/*.@(jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)",
         "headers": [
           {
             "key": "Cache-Control",
             "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
           }
         ]
       },
@@ -55,8 +65,36 @@
           }
         ]
       }
-    ],
-    "cleanUrls": true,
-    "trailingSlash": false
+    ]
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "firebase-storage.rules"
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "database": {
+      "port": 9000
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true
+    }
   }
 }

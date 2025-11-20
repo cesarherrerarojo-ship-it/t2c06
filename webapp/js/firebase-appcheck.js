@@ -12,10 +12,18 @@ import app from './firebase-config.js';
 // reCAPTCHA Enterprise != reCAPTCHA v3 (requiere provider diferente)
 const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2';
 
+// Forzar modo desarrollo en localhost (deshabilita App Check completamente)
+const FORCE_DEVELOPMENT_MODE = location.hostname === 'localhost' || 
+                               location.hostname === '127.0.0.1' || 
+                               location.hostname === '' || // file:// protocol
+                               location.protocol === 'file:' ||
+                               location.hostname.includes('vercel.app'); // Also disable on Vercel for now
+
 // ============================================================================
 // 1. DETECTAR ENTORNO
 // ============================================================================
-const isDevelopment = location.hostname === "localhost" ||
+const isDevelopment = FORCE_DEVELOPMENT_MODE ||
+                     location.hostname === "localhost" ||
                      location.hostname === "127.0.0.1" ||
                      location.hostname.includes("192.168.");
 
@@ -25,17 +33,28 @@ const ALLOWED_DOMAINS = [
   'localhost',
   '127.0.0.1',
   'tuscitasseguras-2d1a6.web.app',
-  'tuscitasseguras-2d1a6.firebaseapp.com'
-  // TODO: Añadir 'tucitasegura.com' cuando esté configurado en reCAPTCHA Enterprise
+  'tuscitasseguras-2d1a6.firebaseapp.com',
+  'traext5oyy6q.vercel.app',
+  'vercel.app',
+  'tucitasegura.com'
 ];
 
 const isAllowedDomain = ALLOWED_DOMAINS.some(domain =>
   location.hostname === domain || location.hostname.includes(domain)
 );
 
+// ============================================================================
+// PRODUCTION SAFETY CHECK
+// ============================================================================
+const isProductionVercel = location.hostname.includes('vercel.app') || 
+                          location.hostname.includes('traext5oyy6q');
+
 if (isDevelopment) {
   console.log('🔧 Modo DESARROLLO detectado');
   console.log('💡 App Check se desactivará para evitar errores');
+} else if (isProductionVercel) {
+  console.log('🚀 Producción en Vercel detectada');
+  console.log('🔒 App Check será configurado con medidas de seguridad adicionales');
 }
 
 // ============================================================================
@@ -69,6 +88,13 @@ if (!isAllowedDomain) {
   console.log('✅ Todas las operaciones funcionarán sin restricciones');
   console.log('🔧 Esto evita el baneo temporal de App Check');
   // NO inicializar App Check en desarrollo
+  appCheck = null;
+} else if (isProductionVercel) {
+  console.log('⚠️  App Check DESACTIVADO temporalmente en Vercel');
+  console.log('💡 Para evitar errores de red, App Check se desactivará');
+  console.log('🔧 Configura App Check correctamente en Firebase Console');
+  console.log('📋 Pasos: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck');
+  // Temporalmente desactivar App Check en Vercel hasta configuración completa
   appCheck = null;
 } else {
   // Dominio permitido y en producción

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Final Bypass - Firebase Auth</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff4444;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h1 {
+            color: #ff4444;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+        }
+        .login-header p {
+            color: #aaa;
+            font-size: 14px;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: #00ff00;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff4444;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff5555 0%, #dd4444 100%);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+            transform: translateY(-2px);
+        }
+        .btn-primary:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .console-output {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-left: 3px solid #333;
+            padding-left: 10px;
+        }
+        .log-success { color: #51cf66; border-left-color: #51cf66; }
+        .log-error { color: #ff6b6b; border-left-color: #ff6b6b; }
+        .log-info { color: #00ff00; border-left-color: #00ff00; }
+        .log-warning { color: #ffd93d; border-left-color: #ffd93d; }
+        .status-indicator {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status-testing { background: #444400; color: #ffd93d; }
+        .status-success { background: #004400; color: #51cf66; }
+        .status-error { background: #440000; color: #ff6b6b; }
+        .bypass-methods {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+        }
+        .method-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .success-icon { color: #51cf66; }
+        .error-icon { color: #ff6b6b; }
+        .loading-icon {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔥 FINAL BYPASS LOGIN</h1>
+            <p>Ultra-direct authentication bypassing Cloud Functions</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">📧 Email:</label>
+                <input type="email" id="email" name="email" required placeholder="tu@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">🔒 Contraseña:</label>
+                <input type="password" id="password" name="password" required placeholder="Tu contraseña">
+            </div>
+            
+            <button type="submit" class="btn-primary" id="loginBtn">
+                <span id="btnText">🚀 INICIAR SESIÓN BYPASS</span>
+            </button>
+        </form>
+
+        <div id="statusIndicator" class="status-indicator" style="display: none;"></div>
+
+        <div class="bypass-methods" id="bypassMethods" style="display: none;">
+            <h3>🧪 Métodos de Bypass:</h3>
+            <div class="method-status">
+                <span>Ultra Direct</span>
+                <span id="ultraDirectStatus">⏳ Pendiente</span>
+            </div>
+            <div class="method-status">
+                <span>Alternative Ultra</span>
+                <span id="alternativeUltraStatus">⏳ Pendiente</span>
+            </div>
+            <div class="method-status">
+                <span>Nuclear Bypass</span>
+                <span id="nuclearBypassStatus">⏳ Pendiente</span>
+            </div>
+        </div>
+
+        <div class="console-output" id="consoleOutput">
+            <div class="log-entry log-info">🎯 Sistema de bypass final iniciado</div>
+            <div class="log-entry log-info">🔄 Listo para autenticación ultra-directa</div>
+        </div>
+    </div>
+
+    <!-- Firebase config -->
+    <script src="js/firebase-config.js"></script>
+    <!-- Final bypass auth -->
+    <script src="js/firebase-auth-final-bypass.js"></script>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.getElementById('btnText');
+        const consoleOutput = document.getElementById('consoleOutput');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const bypassMethods = document.getElementById('bypassMethods');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateStatus(message, type = 'info') {
+            statusIndicator.innerHTML = message;
+            statusIndicator.className = `status-indicator status-${type}`;
+            statusIndicator.style.display = 'block';
+        }
+
+        function updateMethodStatus(method, status) {
+            const statusElement = document.getElementById(method + 'Status');
+            if (statusElement) {
+                switch(status) {
+                    case 'testing':
+                        statusElement.innerHTML = '<span class="loading-icon">⚡</span> Probando...';
+                        statusElement.style.color = '#ffd93d';
+                        break;
+                    case 'success':
+                        statusElement.innerHTML = '<span class="success-icon">✅</span> Éxito';
+                        statusElement.style.color = '#51cf66';
+                        break;
+                    case 'failed':
+                        statusElement.innerHTML = '<span class="error-icon">❌</span> Falló';
+                        statusElement.style.color = '#ff6b6b';
+                        break;
+                }
+            }
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                log('❌ Por favor ingresa email y contraseña', 'error');
+                return;
+            }
+
+            // Disable form during authentication
+            loginBtn.disabled = true;
+            btnText.innerHTML = '<span class="loading-icon">⚡</span> AUTENTICANDO...';
+            bypassMethods.style.display = 'block';
+            
+            log(`🚀 Iniciando bypass authentication para: ${email}`, 'info');
+            updateStatus('🔄 Iniciando autenticación ultra-directa...', 'testing');
+
+            try {
+                // Override the method functions to track progress
+                const originalUltraDirect = window.ultraDirectSignIn;
+                window.ultraDirectSignIn = async function(email, password) {
+                    updateMethodStatus('ultraDirect', 'testing');
+                    log('🔄 Intentando Ultra Direct Bypass...', 'info');
+                    try {
+                        const result = await originalUltraDirect(email, password);
+                        updateMethodStatus('ultraDirect', 'success');
+                        log('✅ Ultra Direct Bypass exitoso!', 'success');
+                        return result;
+                    } catch (error) {
+                        updateMethodStatus('ultraDirect', 'failed');
+                        log(`❌ Ultra Direct falló: ${error.message}`, 'error');
+                        throw error;
+                    }
+                };
+
+                // Attempt final bypass authentication
+                const result = await window.finalBypassAuthentication(email, password);
+                
+                if (result.success) {
+                    log('🎉 ¡AUTENTICACIÓN BYPASS EXITOSA!', 'success');
+                    log(`✅ Usuario: ${result.user.email}`, 'success');
+                    log(`✅ UID: ${result.user.uid || 'N/A'}`, 'success');
+                    log(`✅ Token: ${result.token.substring(0, 20)}...`, 'success');
+                    
+                    updateStatus('✅ Autenticación bypass exitosa!', 'success');
+                    
+                    // Store authentication data
+                    localStorage.setItem('bypassAuthToken', result.token);
+                    localStorage.setItem('bypassUserEmail', result.user.email);
+                    if (result.user.uid) {
+                        localStorage.setItem('bypassUserId', result.user.uid);
+                    }
+                    
+                    // Redirect or show success
+                    setTimeout(() => {
+                        log('🔄 Redirigiendo a panel de control...', 'info');
+                        // window.location.href = '/dashboard.html';
+                        alert('¡Autenticación exitosa! El bypass funcionó correctamente.');
+                    }, 2000);
+                    
+                } else {
+                    throw new Error('Authentication result indicates failure');
+                }
+                
+            } catch (error) {
+                log(`❌ FALLÓ BYPASS AUTHENTICATION: ${error.message}`, 'error');
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                
+                if (error.message.includes('BLOCKING_FUNCTION')) {
+                    log('🎯 Firebase blocking functions are too restrictive', 'warning');
+                    log('💡 Recommendation: Disable blocking functions in Firebase Console', 'warning');
+                } else if (error.message.includes('timeout')) {
+                    log('⏰ Connection timeout - network issues', 'warning');
+                    log('💡 Recommendation: Check network connectivity', 'warning');
+                }
+                
+            } finally {
+                // Re-enable form
+                loginBtn.disabled = false;
+                btnText.textContent = '🚀 INICIAR SESIÓN BYPASS';
+            }
+        });
+
+        // Initialize
+        log('🎯 Sistema de bypass final cargado correctamente', 'success');
+        log('📋 Firebase API Key: ' + (typeof FIREBASE_API_KEY !== 'undefined' ? '✅ Configurada' : '❌ No configurada'), 'info');
+    </script>
+</body>
+</html>

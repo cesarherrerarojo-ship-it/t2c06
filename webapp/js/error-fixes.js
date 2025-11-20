@@ -30,10 +30,10 @@ if (typeof updateGenderDependentFields === 'undefined') {
             if (sosSection) {
                 if (gender === 'femenino') {
                     sosSection.classList.remove('hidden');
-                    sosSection.classList.add('block');
+                    sosSection.classList.add('flex');
                 } else {
                     sosSection.classList.add('hidden');
-                    sosSection.classList.remove('block');
+                    sosSection.classList.remove('flex');
                 }
             }
 
@@ -92,6 +92,16 @@ console.error = function(...args) {
     // Handle App Check throttled errors (reduce noise)
     if (message.includes('appCheck/throttled')) {
         // Already logged by Firebase, don't duplicate
+        return;
+    }
+
+    if (message.includes('google.firestore.v1.Firestore') && message.includes('net::ERR_ABORTED')) {
+        console.warn('⚠️ Firestore canal abortado (dev)');
+        return;
+    }
+
+    if (message.includes('PushManager') && message.includes('no active Service Worker')) {
+        console.warn('⚠️ Notificaciones: Service Worker no activo');
         return;
     }
 
@@ -189,10 +199,3 @@ window.addEventListener('error', function(e) {
 }, true);
 
 console.log('✅ Error fixes loaded successfully');
-
-// Export for use in other scripts
-export {
-    updateGenderDependentFields: window.updateGenderDependentFields,
-    initRecaptchaSafely: window.initRecaptchaSafely,
-    showUserFriendlyError: window.showUserFriendlyError
-};

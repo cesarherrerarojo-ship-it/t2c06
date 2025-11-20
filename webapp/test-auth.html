@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Auth Test - Diagnostic</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+    .success { background-color: #d4edda; border-color: #c3e6cb; }
+    .error { background-color: #f8d7da; border-color: #f5c6cb; }
+    .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Firebase Authentication Diagnostic Test</h1>
+  
+  <div class="test-section info">
+    <h3>Environment Information</h3>
+    <div id="env-info"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Firebase Configuration Test</h3>
+    <div id="firebase-config-test"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>App Check Status</h3>
+    <div id="appcheck-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Authentication Test</h3>
+    <button onclick="testAnonymousAuth()">Test Anonymous Authentication</button>
+    <div id="auth-test-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h3>Manual Login Test</h3>
+    <input type="email" id="test-email" placeholder="test@example.com" value="test@example.com">
+    <input type="password" id="test-password" placeholder="password" value="testpassword123">
+    <button onclick="testEmailAuth()">Test Email Authentication</button>
+    <div id="email-auth-result"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s",
+      authDomain: "tuscitasseguras-2d1a6.firebaseapp.com",
+      projectId: "tuscitasseguras-2d1a6",
+      storageBucket: "tuscitasseguras-2d1a6.firebasestorage.app",
+      messagingSenderId: "924208562587",
+      appId: "1:924208562587:web:5291359426fe390b36213e"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Make auth available globally for testing
+    window.auth = auth;
+    window.signInAnonymously = signInAnonymously;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+
+    // Display environment info
+    document.getElementById('env-info').innerHTML = `
+      <p><strong>Hostname:</strong> ${location.hostname}</p>
+      <p><strong>Protocol:</strong> ${location.protocol}</p>
+      <p><strong>Firebase Project:</strong> ${firebaseConfig.projectId}</p>
+      <p><strong>Auth Domain:</strong> ${firebaseConfig.authDomain}</p>
+    `;
+
+    // Test Firebase configuration
+    try {
+      document.getElementById('firebase-config-test').innerHTML = `
+        <div class="success">
+          <p>✅ Firebase app initialized successfully</p>
+          <p><strong>App Name:</strong> ${app.name}</p>
+          <p><strong>Auth Domain:</strong> ${auth.config.authDomain}</p>
+        </div>
+      `;
+    } catch (error) {
+      document.getElementById('firebase-config-test').innerHTML = `
+        <div class="error">
+          <p>❌ Firebase initialization failed</p>
+          <pre>${error.message}</pre>
+        </div>
+      `;
+    }
+
+    // App Check status
+    document.getElementById('appcheck-status').innerHTML = `
+      <div class="info">
+        <p><strong>App Check Status:</strong> Disabled (Development Mode)</p>
+        <p>ℹ️ App Check is disabled for development/testing purposes</p>
+      </div>
+    `;
+  </script>
+
+  <script>
+    // Test anonymous authentication
+    async function testAnonymousAuth() {
+      const resultDiv = document.getElementById('auth-test-result');
+      try {
+        resultDiv.innerHTML = '<p>Testing anonymous authentication...</p>';
+        
+        const userCredential = await window.signInAnonymously(window.auth);
+        const user = userCredential.user;
+        
+        resultDiv.innerHTML = `
+          <div class="success">
+            <p>✅ Anonymous authentication successful!</p>
+            <p><strong>User ID:</strong> ${user.uid}</p>
+            <p><strong>Email:</strong> ${user.email || 'Not available'}</p>
+            <p><strong>Provider:</strong> Anonymous</p>
+          </div>
+        `;
+        
+        // Sign out after test
+        await window.auth.signOut();
+        
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="error">
+            <p>❌ Anonymous authentication failed</p>
+            <p><strong>Error Code:</strong> ${error.code}</p>
+            <p><strong>Error Message:</strong> ${error.message}</p>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+        console.error('Anonymous auth error:', error);
+      }
+    }
+
+    // Test email authentication
+    async function testEmailAuth() {
+      const resultDiv = document.getElementById('email-auth-result');
+      const email = document.getElementById('test-email').value;
+      const password = document.getElementById('test-password').value;
+      
+      try {
+        resultDiv.innerHTML = '<p>Testing email authentication...</p>';
+        
+        const userCredential = await window.signInWithEmailAndPassword(window.auth, email, password);
+        const user = userCredential.user;
+        
+        resultDiv.innerHTML = `
+          <div class="success">
+            <p>✅ Email authentication successful!</p>
+            <p><strong>User ID:</strong> ${user.uid}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Email Verified:</strong> ${user.emailVerified}</p>
+          </div>
+        `;
+        
+        // Sign out after test
+        await window.auth.signOut();
+        
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="error">
+            <p>❌ Email authentication failed</p>
+            <p><strong>Error Code:</strong> ${error.code}</p>
+            <p><strong>Error Message:</strong> ${error.message}</p>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+        console.error('Email auth error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

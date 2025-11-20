@@ -316,7 +316,7 @@
   </main>
 
   <!-- Success Modal -->
-  <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="successModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="glass-container max-w-md w-full p-8 text-center">
       <div class="inline-block bg-green-500 bg-opacity-30 p-4 rounded-full mb-4">
         <i class="fas fa-check-circle text-green-300 text-5xl"></i>
@@ -339,6 +339,7 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <!--
     ⚠️ CRITICAL: Google Maps API Configuration Required
 
@@ -355,11 +356,15 @@
     Status: 🔴 NOT CONFIGURED - Map will NOT work without valid API key
   -->
   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
+=======
+  <!-- Google Maps API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AQ.Ab8RN6I6FQgaC1SltCBdMTyt6mM49BUATqwB32I7g5crKb91Vg&libraries=places"></script>
+>>>>>>> origin/claude/add-api-key-integration-011CUyqdyCeFEB4PHX2XZJn9
 
   <!-- Firebase Scripts -->
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
+    import './js/firebase-appcheck.js';
 
     // Then import Firebase services
     import { auth, db } from './js/firebase-config.js';
@@ -748,7 +753,7 @@
         });
 
         // Show success modal
-        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.remove('opacity-0', 'pointer-events-none');
 
         // Update UI
         const rule2 = document.getElementById('rule2');

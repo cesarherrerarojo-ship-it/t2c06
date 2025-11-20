@@ -85,7 +85,7 @@ service firebase.storage {
 
     function isInConversation(conversationId) {
       return isAuthed() &&
-             exists(/b/$(bucket)/o/chat_attachments/$(conversationId)/__acl__/$(request.auth.uid));
+             request.auth.uid in get(/databases/(default)/documents/conversations/$(conversationId)).data.participants;
     }
 
     match /chat_attachments/{conversationId}/{filename} {

@@ -79,13 +79,20 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_HOUR: int = 1000
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ]
 
     @validator("CORS_ORIGINS", pre=True)
-    def parse_cors_origins(cls, v: str) -> List[str]:
+    def parse_cors_origins(cls, v):
         """Parse CORS origins from comma-separated string"""
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
+        elif isinstance(v, list):
+            return v
         return v
 
     class Config:
