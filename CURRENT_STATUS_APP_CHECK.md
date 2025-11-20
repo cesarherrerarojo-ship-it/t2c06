@@ -12,7 +12,7 @@ POST https://content-firebaseappcheck.googleapis.com/.../exchangeDebugToken 403 
 - Auth requests fallan
 - App no puede conectarse a Firebase backend
 
-**Causa Raíz:** Debug token `BCF51A42-7B5F-4009-B8D7-30AF50EA661B` **NO está registrado** en Firebase Console.
+**Causa Raíz:** Debug token `cb4a5b8b-3dbf-40af-b973-0115297ecb84` **NO está registrado** en Firebase Console.
 
 ---
 
@@ -53,7 +53,7 @@ POST https://content-firebaseappcheck.googleapis.com/.../exchangeDebugToken 403 
 
 ### Tu Debug Token (CÓPIALO):
 ```
-BCF51A42-7B5F-4009-B8D7-30AF50EA661B
+cb4a5b8b-3dbf-40af-b973-0115297ecb84
 ```
 
 ### Pasos para Registrar:
@@ -73,7 +73,7 @@ https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
 
 #### 5. Pega el Token
 ```
-Token: BCF51A42-7B5F-4009-B8D7-30AF50EA661B
+Token: cb4a5b8b-3dbf-40af-b973-0115297ecb84
 Display name: Localhost Development
 ```
 
@@ -136,7 +136,7 @@ sessionStorage.clear();
 
 #### Opción 2: Verificar Token en Firebase Console
 1. Firebase Console → App Check → Apps → Debug tokens
-2. Confirmar que ves: `BCF51A42-7B5F-4009-B8D7-30AF50EA661B`
+2. Confirmar que ves: `cb4a5b8b-3dbf-40af-b973-0115297ecb84`
 3. Confirmar que está "Active" (no revoked)
 
 #### Opción 3: Generar Nuevo Debug Token
@@ -224,7 +224,7 @@ Firebase Console → App Check:
 ### PASO 1 (AHORA):
 **Registrar debug token en Firebase Console**
 ```
-Token: BCF51A42-7B5F-4009-B8D7-30AF50EA661B
+Token: cb4a5b8b-3dbf-40af-b973-0115297ecb84
 URL: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
 ```
 
@@ -244,8 +244,8 @@ URL: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
 **Project ID:** `tuscitasseguras-2d1a6`
 **Web App ID:** `1:924208562587:web:5291359426fe390b36213e`
 **reCAPTCHA Site Key:** `6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2`
-**Debug Token:** `BCF51A42-7B5F-4009-B8D7-30AF50EA661B`
-**Git Branch:** `claude/add-api-key-integration-011CUyqdyCeFEB4PHX2XZJn9`
+**Debug Token:** `cb4a5b8b-3dbf-40af-b973-0115297ecb84`
+**Git Branch:** `claude/build-user-search-page-011CUsoW7dRJdd1WfzCkvsE9`
 
 ---
 
@@ -266,6 +266,5 @@ URL: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
 
 ---
 
-**Última actualización:** 2025-11-14
+**Última actualización:** 2025-11-10
 **Estado:** ⏳ Esperando registro de debug token en Firebase Console
-**Debug Token Actual:** BCF51A42-7B5F-4009-B8D7-30AF50EA661B

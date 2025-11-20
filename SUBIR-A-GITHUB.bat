@@ -22,7 +22,7 @@ git remote remove origin 2>nul
 git remote add origin https://%TOKEN%@github.com/cesarherrerarojo-ship-it/TuCitaSegura.git
 
 echo 📤 Subiendo código a GitHub...
-git push -u origin HEAD:main
+git push -u origin claude/paypal-insurance-retention-01KCDWh2xVbLZSmqH8kX3uhW
 
 if %errorlevel% equ 0 (
     echo.

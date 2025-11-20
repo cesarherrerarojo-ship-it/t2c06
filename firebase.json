@@ -3,37 +3,42 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ]
-    }
-  ],
+  "storage": {
+    "rules": "firebase-storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs18",
+    "predeploy": [],
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "serviceAccountKey.json"
+    ]
+  },
   "hosting": {
-    "public": "webapp",
+    "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      "**/node_modules/**",
+      "functions/**",
+      "backend/**",
+      "src/**",
+      "*.md",
+      "firestore.rules",
+      "firebase-storage.rules",
+      "firestore.indexes.json",
+      ".firebaserc",
+      ".gitignore",
+      "tailwind.config.js",
+      "postcss.config.js"
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css)",
+        "source": "**/*.@(js|css|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)",
         "headers": [
           {
             "key": "Cache-Control",
@@ -42,48 +47,16 @@
         ]
       },
       {
-        "source": "**",
+        "source": "**/*.html",
         "headers": [
           {
-            "key": "Access-Control-Allow-Origin",
-            "value": "*"
-          },
-          {
-            "key": "Access-Control-Allow-Methods",
-            "value": "GET, POST, PUT, DELETE, OPTIONS"
-          },
-          {
-            "key": "Access-Control-Allow-Headers",
-            "value": "Content-Type, Authorization"
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
           }
         ]
       }
-    ]
-  },
-  "database": {
-    "rules": "database.rules.json"
-  },
-  "storage": {
-    "rules": "firebase-storage.rules"
-  },
-  "emulators": {
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "database": {
-      "port": 9000
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "storage": {
-      "port": 9199
-    },
-    "ui": {
-      "enabled": true
-    }
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
   }
 }

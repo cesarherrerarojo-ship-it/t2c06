@@ -11,8 +11,8 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- PayPal SDK with Vault -->
-  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=EUR&vault=true&intent=tokenize"></script>
+  <!-- PayPal SDK with AUTHORIZE intent (not capture) -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AQouhwoeHU6p26B7mxYl5rYyl2Hj6xl2kfo11pQbLq6oUFDv12JQkZ5Kg-HN_kzU0wzvX6CbgNbPcNYI&currency=EUR&intent=authorize"></script>
 
   <style>
     body {
@@ -68,13 +68,13 @@
   </div>
 
   <!-- Success Modal -->
-  <div id="successModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+  <div id="successModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full p-8 text-center fade-in">
       <div class="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
         <i class="fas fa-shield-check text-4xl text-white"></i>
       </div>
-      <h3 class="text-3xl font-bold mb-4">¡Seguro Activado!</h3>
-      <p class="text-slate-200 mb-6">Tu seguro anti-plantón ha sido activado exitosamente. Ahora puedes agendar citas con total confianza.</p>
+      <h3 class="text-3xl font-bold mb-4">¡Retención Activada!</h3>
+      <p class="text-slate-200 mb-6">Se han retenido €120 en tu tarjeta. Esta cantidad NO se cobrará a menos que plantes a alguien. Ahora puedes agendar citas con total confianza.</p>
       <button onclick="redirectToSearch()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition transform hover:scale-105">
         Comenzar a Buscar
       </button>
@@ -82,13 +82,13 @@
   </div>
 
   <!-- Error Modal -->
-  <div id="errorModal" class="opacity-0 pointer-events-none fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+  <div id="errorModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
     <div class="glass-strong rounded-2xl max-w-md w-full p-8 text-center fade-in">
       <div class="w-20 h-20 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
         <i class="fas fa-exclamation-circle text-4xl text-white"></i>
       </div>
-      <h3 class="text-3xl font-bold mb-4">Error en el Pago</h3>
-      <p id="errorMessage" class="text-slate-200 mb-6">Hubo un problema al procesar tu pago. Por favor, intenta nuevamente.</p>
+      <h3 class="text-3xl font-bold mb-4">Error en la Retención</h3>
+      <p id="errorMessage" class="text-slate-200 mb-6">Hubo un problema al procesar la retención. Por favor, intenta nuevamente.</p>
       <button onclick="closeErrorModal()" class="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-6 rounded-xl transition transform hover:scale-105">
         Intentar Nuevamente
       </button>
@@ -118,12 +118,12 @@
     <div class="glass-strong rounded-2xl p-8 mb-8 fade-in">
       <div class="text-center mb-8">
         <div class="inline-block bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold mb-4">
-          AUTORIZACIÓN - NO PAGO INMEDIATO
+          RETENCIÓN €120
         </div>
         <div class="text-6xl font-bold mb-2">
           €120
         </div>
-        <p class="text-slate-300 text-lg">Solo se cobra si plantas a alguien - válido para siempre</p>
+        <p class="text-slate-300 text-lg">retención única - solo se cobra en caso de plantón</p>
       </div>
 
       <!-- Features List -->
@@ -143,8 +143,8 @@
             <i class="fas fa-check text-green-400"></i>
           </div>
           <div>
-            <h4 class="font-bold text-lg">Protección Económica</h4>
-            <p class="text-slate-300">Si tu cita no se presenta, recuperas tu inversión</p>
+            <h4 class="font-bold text-lg">Retención de Garantía</h4>
+            <p class="text-slate-300">€120 retenidos en tu tarjeta, solo se cobran si plantas a alguien. Si eres responsable, nunca pagas</p>
           </div>
         </div>
 
@@ -198,31 +198,21 @@
         <ol class="space-y-3 text-slate-300">
           <li class="flex gap-3">
             <span class="font-bold text-white">1.</span>
-            <span><strong class="text-white">Autorizas el método de pago</strong> - No se cobra nada ahora, solo guardamos tu método de pago de forma segura</span>
+            <span>Agenda una cita con tu match dentro de la plataforma</span>
           </li>
           <li class="flex gap-3">
             <span class="font-bold text-white">2.</span>
-            <span><strong class="text-white">Agendar citas libremente</strong> - Puedes programar todas las citas que quieras sin límites</span>
+            <span>Ambos confirman asistencia 24h antes de la cita</span>
           </li>
           <li class="flex gap-3">
             <span class="font-bold text-white">3.</span>
-            <span><strong class="text-white">Verificación al llegar</strong> - Ambos confirman asistencia al llegar al lugar de la cita</span>
+            <span>Verifican su presencia al llegar al lugar de la cita</span>
           </li>
           <li class="flex gap-3">
             <span class="font-bold text-white">4.</span>
-            <span><strong class="text-white">Solo se cobra si plantas</strong> - Si no asistes a una cita confirmada, se cobran los €120 de tu método de pago guardado</span>
+            <span>Si tu cita no llega, se cobra su retención de €120 y su reputación baja. Si ambos llegan, ambas retenciones permanecen activas para futuras citas</span>
           </li>
         </ol>
-      </div>
-
-      <!-- Important Notice about Payment -->
-      <div class="bg-green-500/20 border-2 border-green-400 rounded-xl p-4 mb-6 text-center">
-        <i class="fas fa-shield-check text-green-400 text-2xl mb-2"></i>
-        <p class="text-sm text-green-100">
-          <strong>⚠️ IMPORTANTE:</strong> No se te cobrará nada al activar el seguro. Solo autorizas tu método de pago.
-          <br>
-          El cargo de €120 solo se realizará si plantas a alguien en una cita confirmada.
-        </p>
       </div>
 
       <!-- PayPal Button Container -->
@@ -231,9 +221,7 @@
       <!-- Security Notice -->
       <div class="glass rounded-xl p-4 text-center text-sm text-slate-300">
         <i class="fas fa-lock mr-2"></i>
-        Método de pago seguro guardado por PayPal. No se realiza ningún cargo al activar el seguro.
-        <br>
-        Solo se cobrará €120 si plantas a alguien en una cita confirmada.
+        Retención segura procesada por PayPal. Solo se cobra en caso de plantón. Si eres responsable, nunca pagas.
       </div>
     </div>
 
@@ -245,7 +233,7 @@
         </div>
         <div>
           <h4 class="font-bold text-xl mb-2 text-yellow-400">Requisito Importante</h4>
-          <p class="text-slate-200">Para agendar citas necesitas tanto la <strong>membresía premium</strong> (€29.99/mes) como el <strong>seguro anti-plantón</strong> (€120 pago único).</p>
+          <p class="text-slate-200">Para agendar citas necesitas tanto la <strong>membresía premium</strong> (€29.99/mes) como el <strong>seguro anti-plantón</strong> (retención de €120).</p>
           <p class="text-slate-300 mt-2">Si aún no tienes la membresía premium, puedes contratarla <a href="/webapp/suscripcion.html" class="text-yellow-400 hover:text-yellow-300 underline">aquí</a>.</p>
         </div>
       </div>
@@ -257,38 +245,33 @@
 
       <div class="space-y-4">
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Me cobran €120 ahora?</summary>
-          <p class="mt-3 text-slate-300"><strong class="text-white">NO.</strong> Al activar el seguro solo autorizas tu método de pago (tarjeta o cuenta PayPal). No se te cobra nada. El cargo de €120 solo se realiza si plantas a alguien en una cita confirmada. Si asistes a todas tus citas, nunca se te cobrará.</p>
-        </details>
-
-        <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Cuándo se cobra exactamente?</summary>
-          <p class="mt-3 text-slate-300">Los €120 solo se cobran automáticamente de tu método de pago guardado cuando nuestro sistema verifica que no asististe a una cita confirmada. Esto sucede cuando la otra persona verifica su asistencia y tú no. El cargo se procesa inmediatamente después de la verificación.</p>
+          <summary class="font-bold text-lg">¿Por qué 120€?</summary>
+          <p class="mt-3 text-slate-300">Los €120 son una RETENCIÓN (no un pago). Se retienen en tu tarjeta pero NO se cobran a menos que plantes a alguien. Si tus citas son exitosas, la retención permanece activa pero nunca se captura. Esto garantiza el compromiso serio de ambas partes.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
           <summary class="font-bold text-lg">¿Qué pasa si me plantan?</summary>
-          <p class="mt-3 text-slate-300">Si tu cita no se presenta y no verifica su asistencia, a ella se le cobrará €120 de su método de pago guardado. Su reputación bajará significativamente y podrías recibir compensación según las políticas de la plataforma.</p>
+          <p class="mt-3 text-slate-300">Si tu cita no se presenta y no verifica su asistencia, se capturan los €120 retenidos de su tarjeta como compensación, su reputación bajará significativamente, y tú mantienes tu retención intacta (no se te cobra).</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿La autorización caduca?</summary>
-          <p class="mt-3 text-slate-300">No, la autorización de pago es válida para siempre mientras mantengas tu cuenta activa. Puedes revocarla en cualquier momento desde tu perfil, pero perderás la capacidad de agendar citas.</p>
+          <summary class="font-bold text-lg">¿La retención caduca?</summary>
+          <p class="mt-3 text-slate-300">No, la retención permanece activa para siempre. Mientras no plantes a nadie, NUNCA se te cobrará. Solo se procesará el cargo si plantas a alguien.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Puedo usar saldo de PayPal?</summary>
-          <p class="mt-3 text-slate-300">No, para autorizaciones de pago futuro PayPal requiere una tarjeta de crédito o débito vinculada. El saldo de PayPal no permite este tipo de autorizaciones. Debes tener una tarjeta registrada en tu cuenta de PayPal.</p>
+          <summary class="font-bold text-lg">¿Puedo cancelar la retención?</summary>
+          <p class="mt-3 text-slate-300">Una vez activada la retención, permanece en tu cuenta para garantizar el compromiso. Mientras no plantes a nadie, no se te cobrará nada. La retención solo se libera si decides cancelar tu cuenta permanentemente.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
-          <summary class="font-bold text-lg">¿Es seguro guardar mi método de pago?</summary>
-          <p class="mt-3 text-slate-300">Absolutamente. PayPal guarda tu método de pago de forma encriptada en sus servidores. Nosotros solo recibimos un token seguro, nunca vemos ni almacenamos los datos de tu tarjeta. Solo PayPal puede procesar cobros con este token.</p>
+          <summary class="font-bold text-lg">¿Es seguro el pago?</summary>
+          <p class="mt-3 text-slate-300">Absolutamente. Todos los pagos son procesados por PayPal, uno de los sistemas de pago más seguros del mundo. No almacenamos tu información de pago.</p>
         </details>
 
         <details class="glass rounded-xl p-4 cursor-pointer">
           <summary class="font-bold text-lg">¿También necesito la membresía?</summary>
-          <p class="mt-3 text-slate-300">Sí, para agendar citas necesitas tanto la membresía premium (€29.99/mes) para enviar solicitudes y chatear, como el seguro anti-plantón (autorización de €120) para confirmar las citas.</p>
+          <p class="mt-3 text-slate-300">Sí, para agendar citas necesitas tanto la membresía premium (€29.99/mes) para enviar solicitudes y chatear, como el seguro anti-plantón (€120) para confirmar las citas.</p>
         </details>
       </div>
     </div>
@@ -296,18 +279,17 @@
   </div>
 
   <!-- Error Fixes -->
-  <script type="module" src="/webapp/js/error-fixes.js"></script>
+  <script src="/webapp/js/error-fixes.js"></script>
 
   <!-- Firebase SDK -->
   <script type="module">
     // Import App Check FIRST (must be before firebase-config.js)
-    import './js/firebase-appcheck.js';
+    // TEMP DISABLED (throttling): import './js/firebase-appcheck.js';
 
     // Then import Firebase services
-    import { auth, db, functions } from './js/firebase-config.js';
+    import { auth, db } from './js/firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
     import { showToast } from './js/utils.js';
     import { loadTheme } from './js/theme.js';
 
@@ -325,7 +307,7 @@
       }
     });
 
-    // Initialize PayPal Button with Vault
+    // Initialize PayPal Button
     function initPayPalButton() {
       paypal.Buttons({
         style: {
@@ -336,65 +318,59 @@
           height: 50
         },
 
-        // Create Vault Setup Token (saves payment method, doesn't charge)
-        createVaultSetupToken: async function(data, actions) {
-          try {
-            // Call Cloud Function to create vault setup token
-            const createVaultSetup = httpsCallable(functions, 'createInsuranceVaultSetup');
-            const result = await createVaultSetup();
-
-            console.log('Vault setup token created:', result.data.setupToken);
-            return result.data.setupToken;
-
-          } catch (error) {
-            console.error('Error creating vault setup:', error);
-            showError('Error al configurar el método de pago. Por favor intenta nuevamente.');
-            throw error;
-          }
+        createOrder: function(data, actions) {
+          return actions.order.create({
+            purchase_units: [{
+              description: 'Seguro Anti-Plantón TuCitaSegura',
+              amount: {
+                currency_code: 'EUR',
+                value: '120.00'
+              },
+              custom_id: currentUser.uid // Vincula el pago al usuario
+            }]
+          });
         },
 
-        // When user approves, PayPal returns a payment token
         onApprove: async function(data, actions) {
           // Mostrar overlay de carga
           document.getElementById('loadingOverlay').classList.remove('hidden');
 
           try {
-            console.log('Payment method approved:', data);
+            // AUTORIZAR (retener) el pago - NO CAPTURAR
+            // Los €120 se retienen en la tarjeta del usuario
+            // Solo se capturarán si hay un plantón, sino se liberarán
+            const authorization = await actions.order.authorize();
+            console.log('Payment authorized (hold placed):', authorization);
 
-            // Get the payment token from PayPal's response
-            // The payment token is in data.vaultSetupToken
-            const paymentToken = data.vaultSetupToken;
+            // Obtener el authorization ID para capturar o liberar después
+            const authorizationID = authorization.purchase_units[0]
+              .payments.authorizations[0].id;
 
-            if (!paymentToken) {
-              throw new Error('No payment token received from PayPal');
-            }
-
-            console.log('Payment token received:', paymentToken);
-
-            // Save payment token to Firestore
+            // Actualizar Firestore con los datos del seguro
             const userRef = doc(db, 'users', currentUser.uid);
 
             await updateDoc(userRef, {
               hasAntiGhostingInsurance: true,
-              insurancePaymentToken: paymentToken, // Save payment token for future charges
+              insuranceAuthorizationId: authorizationID, // ID para capturar/liberar después
+              insuranceOrderId: data.orderID,
               insurancePurchaseDate: serverTimestamp(),
               insuranceAmount: 120,
-              insuranceType: 'vault', // Indicate this is a vault-based insurance
+              insuranceStatus: 'authorized', // authorized, captured, voided
               updatedAt: serverTimestamp()
             });
 
-            console.log('Firestore updated successfully with payment token');
+            console.log('Firestore updated successfully with authorization ID');
 
             // Ocultar overlay de carga
             document.getElementById('loadingOverlay').classList.add('hidden');
 
             // Mostrar modal de éxito
-            document.getElementById('successModal').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('successModal').classList.remove('hidden');
 
           } catch (error) {
-            console.error('Error saving payment method:', error);
+            console.error('Error processing authorization:', error);
             document.getElementById('loadingOverlay').classList.add('hidden');
-            showError('Error al activar tu seguro. Por favor contacta soporte.');
+            showError('Error al procesar tu seguro. Por favor contacta soporte con tu ID de orden: ' + data.orderID);
           }
         },
 
@@ -416,12 +392,12 @@
     // Show error modal
     function showError(message) {
       document.getElementById('errorMessage').textContent = message;
-      document.getElementById('errorModal').classList.remove('opacity-0', 'pointer-events-none');
+      document.getElementById('errorModal').classList.remove('hidden');
     }
 
     // Close error modal
     window.closeErrorModal = function() {
-      document.getElementById('errorModal').classList.add('opacity-0', 'pointer-events-none');
+      document.getElementById('errorModal').classList.add('hidden');
     };
 
     // Redirect to search page
