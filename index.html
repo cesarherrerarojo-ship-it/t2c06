@@ -47,15 +47,6 @@
   </style>
 </head>
 <body class="text-white">
-  <script>
-    (function () {
-      var h = location.hostname;
-      if (h.indexOf('www.') === 0) {
-        var dest = location.protocol + '//' + h.replace(/^www\./, '') + location.pathname + location.search + location.hash;
-        location.replace(dest);
-      }
-    })();
-  </script>
 
   <!-- Header -->
   <header class="glass fixed top-0 w-full z-50">
@@ -97,10 +88,6 @@
           <a href="#features" class="glass px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
             <i class="fas fa-info-circle mr-2"></i>Saber Más
           </a>
-        </div>
-        <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center">
-          <button id="quickLoginGonzalo" class="glass px-6 py-3 rounded-lg font-semibold transition hover:scale-105">Entrar como Gonzalo (masculino)</button>
-          <button id="quickLoginCasita" class="glass px-6 py-3 rounded-lg font-semibold transition hover:scale-105">Entrar como La Casita (femenino)</button>
         </div>
       </div>
 
@@ -232,13 +219,44 @@
     </div>
   </footer>
 
-  
+  <!-- Footer -->
+  <footer class="glass mt-20 py-8">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      <div class="flex items-center justify-center gap-2 mb-4">
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-bold text-xl">TuCitaSegura</span>
+      </div>
+      <p class="text-slate-400 mb-4">
+        Encuentra conexiones auténticas con seguridad y respeto
+      </p>
+      <div class="flex justify-center gap-6 mb-4">
+        <a href="#" class="text-slate-400 hover:text-blue-400 transition">
+          <i class="fab fa-facebook text-2xl"></i>
+        </a>
+        <a href="#" class="text-slate-400 hover:text-pink-400 transition">
+          <i class="fab fa-instagram text-2xl"></i>
+        </a>
+        <a href="#" class="text-slate-400 hover:text-blue-300 transition">
+          <i class="fab fa-twitter text-2xl"></i>
+        </a>
+      </div>
+      <p class="text-sm text-slate-500">
+        © 2025 TuCitaSegura. Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"></script>
 
   <!-- Backend Integration Script -->
   <script type="module">
-    // Import API Service y Firebase Auth (modular)
+    // Import API Service
     import { apiService } from './webapp/js/api-service.js';
-    import { auth } from './webapp/js/firebase-config.js';
     
     class IndexPageManager {
       constructor() {
@@ -263,9 +281,6 @@
 
       async testBackendConnection() {
         try {
-          if (!apiService.isLocal) {
-            return; // No mostrar estado backend en producción
-          }
           const isAvailable = await apiService.isBackendAvailable();
           
           if (isAvailable) {
@@ -279,14 +294,13 @@
             this.showBackendStatus(true, health);
             
           } else {
+            console.warn('⚠️ Backend not available - using Firebase only');
             this.showBackendStatus(false);
           }
           
         } catch (error) {
           console.error('❌ Backend connection failed:', error);
-          if (apiService.isLocal) {
-            this.showBackendStatus(false);
-          }
+          this.showBackendStatus(false);
         }
       }
 
@@ -327,7 +341,7 @@
       async updateBackendStatus() {
         try {
           // Check if user is logged in
-          const user = auth.currentUser;
+          const user = firebase.auth().currentUser;
           
           if (user) {
             // Get authentication token
@@ -343,7 +357,7 @@
               this.updateAuthUI(authStatus);
               
             } catch (error) {
-              console.warn('Backend auth unavailable:', error?.message || error);
+              console.error('Backend auth failed:', error);
             }
           }
           
@@ -445,43 +459,33 @@
     window.IndexPageManager = IndexPageManager;
   </script>
 
-  <!-- Firebase Integration (SDK modular) -->
+  <!-- Firebase Integration -->
   <script type="module">
-    import { auth } from './webapp/js/firebase-config.js';
-    import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const loginButton = document.querySelector('a[href="/webapp/login.html"]');
-        const registerButton = document.querySelector('a[href="/webapp/register.html"]');
-        if (loginButton && registerButton) {
-          loginButton.textContent = 'Mi Perfil';
-          loginButton.href = '/webapp/perfil.html';
-          registerButton.textContent = 'Explorar';
-          registerButton.href = '/webapp/buscar-usuarios.html';
-        }
-      }
-    });
-    const g = document.getElementById('quickLoginGonzalo');
-    const c = document.getElementById('quickLoginCasita');
-    if (g) {
-      g.addEventListener('click', async () => {
-        try {
-          await signOut(auth);
-          await signInWithEmailAndPassword(auth, 'gonzalo.hrrj@gmail.com', 'Temporal123!');
-          window.location.href = '/webapp/buscar-usuarios.html';
-        } catch (e) {
-          alert(e.message || 'Error');
-        }
-      });
-    }
-    if (c) {
-      c.addEventListener('click', async () => {
-        try {
-          await signOut(auth);
-          await signInWithEmailAndPassword(auth, 'lacasitadebarajas@gmail.com', 'Temporal123!');
-          window.location.href = '/webapp/buscar-usuarios.html';
-        } catch (e) {
-          alert(e.message || 'Error');
+    // Import Firebase config
+    import { firebaseConfig } from './webapp/js/firebase-config.js';
+    
+    // Initialize Firebase
+    if (typeof firebase !== 'undefined') {
+      firebase.initializeApp(firebaseConfig);
+      
+      // Add auth state listener
+      firebase.auth().onAuthStateChanged(async (user) => {
+        if (user) {
+          console.log('User logged in:', user.email);
+          
+          // Update UI for authenticated user
+          const loginButton = document.querySelector('a[href="/webapp/login.html"]');
+          const registerButton = document.querySelector('a[href="/webapp/register.html"]');
+          
+          if (loginButton && registerButton) {
+            loginButton.textContent = 'Mi Perfil';
+            loginButton.href = '/webapp/perfil.html';
+            
+            registerButton.textContent = 'Explorar';
+            registerButton.href = '/webapp/buscar-usuarios.html';
+          }
+        } else {
+          console.log('No user logged in');
         }
       });
     }

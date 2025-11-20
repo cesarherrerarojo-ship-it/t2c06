@@ -15,9 +15,7 @@
     "deploy:storage": "firebase deploy --only storage",
     "deploy:functions": "firebase deploy --only functions",
     "deploy:hosting": "npm run build:css && firebase deploy --only hosting",
-    "deploy:all": "npm run build:css && firebase deploy",
-    "lint": "prettier -c .",
-    "format": "prettier -w ."
+    "deploy:all": "npm run build:css && firebase deploy"
   },
   "keywords": [
     "dating",
@@ -36,8 +34,7 @@
     "@types/jest": "^29.5.10",
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "prettier": "^3.2.5"
+    "postcss": "^8.4.32"
   },
   "dependencies": {},
   "jest": {

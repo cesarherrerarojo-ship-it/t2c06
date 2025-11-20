@@ -1,98 +1,10 @@
 // functions/index.js (Node 18)
 const functions = require('firebase-functions');
-const f = functions.region('europe-west1');
 const admin = require('firebase-admin');
-const express = require('express');
-const cors = require('cors');
 const stripe = require('stripe')(functions.config().stripe?.secret_key || process.env.STRIPE_SECRET_KEY);
-const ADMIN_EMAILS = ['cesar.herrera.rojo@gmail.com'];
+const axios = require('axios');
 
 admin.initializeApp();
-
-const apiApp = express();
-apiApp.use(cors({ origin: [
-  'http://localhost:8000',
-  'https://tuscitasseguras-2d1a6.web.app',
-  'https://tuscitasseguras-2d1a6.firebaseapp.com'
-] }));
-apiApp.use(express.json());
-
-apiApp.get('/health', (req, res) => {
-  res.json({ status: 'healthy', version: '1.0.0', timestamp: new Date().toISOString() });
-});
-
-apiApp.get('/api/v1/auth/status', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ detail: 'Authorization header missing or invalid' });
-    }
-    const token = authHeader.split(' ', 2)[1];
-    let decoded;
-    try {
-      decoded = await admin.auth().verifyIdToken(token);
-    } catch (e) {
-      return res.status(401).json({ detail: 'Invalid or expired Firebase ID token' });
-    }
-    const uid = decoded.uid;
-    const userRecord = await admin.auth().getUser(uid);
-    const snap = await admin.firestore().collection('users').doc(uid).get();
-    const data = snap.exists ? snap.data() : {};
-    const photos = Array.isArray(data.photos) ? data.photos : [];
-    const bio = typeof data.bio === 'string' ? data.bio : '';
-    const profileComplete = Boolean(data.alias && bio && photos.length >= 3);
-    res.json({
-      uid,
-      email: userRecord.email || '',
-      email_verified: !!userRecord.emailVerified,
-      profile_complete: profileComplete,
-      has_active_subscription: !!data.hasActiveSubscription,
-      subscription_status: data.subscriptionStatus || 'inactive',
-      created_at: userRecord.metadata ? userRecord.metadata.creationTime : null,
-      last_login: userRecord.metadata ? userRecord.metadata.lastSignInTime : null
-    });
-  } catch (error) {
-    res.status(500).json({ detail: 'Error getting authentication status' });
-  }
-});
-
-apiApp.get('/api/v1/membership/status', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ detail: 'Authorization header missing or invalid' });
-    }
-    const token = authHeader.split(' ', 2)[1];
-    let decoded;
-    try {
-      decoded = await admin.auth().verifyIdToken(token);
-    } catch (e) {
-      return res.status(401).json({ detail: 'Invalid or expired Firebase ID token' });
-    }
-    const uid = decoded.uid;
-    const snap = await admin.firestore().collection('users').doc(uid).get();
-    if (!snap.exists) {
-      return res.json({ has_active_membership: false, subscription_status: 'inactive', details: 'User not found' });
-    }
-    const data = snap.data();
-    res.json({
-      has_active_membership: !!data.hasActiveSubscription,
-      subscription_status: data.subscriptionStatus || 'inactive',
-      subscription_id: data.subscriptionId || null,
-      subscription_start_date: data.subscriptionStartDate || null,
-      subscription_end_date: data.subscriptionEndDate || null,
-      has_anti_ghosting_insurance: !!data.hasAntiGhostingInsurance,
-      insurance_purchase_date: data.insurancePurchaseDate || null,
-      insurance_amount: data.insuranceAmount || null,
-      can_access_premium_features: !!data.hasActiveSubscription,
-      details: 'Membership status retrieved successfully'
-    });
-  } catch (error) {
-    res.status(500).json({ detail: 'Error getting membership status' });
-  }
-});
-
-exports.api = f.https.onRequest(apiApp);
 
 // ============================================================================
 // HELPER FUNCTIONS: Payment management
@@ -103,7 +15,6 @@ exports.api = f.https.onRequest(apiApp);
  */
 async function updateUserMembership(userId, status, subscriptionData = {}) {
   const db = admin.firestore();
-  console.log('[updateUserMembership] db.update type:', typeof db.update);
   const userRef = db.collection('users').doc(userId);
 
   const updateData = {
@@ -123,11 +34,6 @@ async function updateUserMembership(userId, status, subscriptionData = {}) {
   }
 
   await userRef.update(updateData);
-  // Testing aid: if the Firestore stub exposes a root-level update(), call it to make tests observable
-  if (typeof db.update === 'function') {
-    console.log('[updateUserMembership] Calling db.update with', JSON.stringify(updateData));
-    await db.update(updateData);
-  }
   console.log(`[updateUserMembership] User ${userId} membership updated: ${status}`);
 
   // CRITICAL: Update custom claims for Firestore Rules
@@ -166,10 +72,6 @@ async function updateUserInsurance(userId, paymentData) {
   };
 
   await userRef.update(updateData);
-  // Testing aid: if the Firestore stub exposes a root-level update(), call it to make tests observable
-  if (typeof db.update === 'function') {
-    await db.update(updateData);
-  }
   console.log(`[updateUserInsurance] User ${userId} insurance activated`);
 
   // CRITICAL: Update custom claims for Firestore Rules
@@ -273,29 +175,20 @@ async function logFailedPayment(userId, paymentData) {
 // ============================================================================
 // 1) CUSTOM CLAIMS: Al crear el doc de usuario, fijamos displayName y claims
 // ============================================================================
-// v2 Firestore triggers removed for stability
-
-exports.onUserDocCreateGen1 = f.firestore
+exports.onUserDocCreate = functions.firestore
   .document('users/{userId}')
   .onCreate(async (snap, ctx) => {
     const uid = ctx.params.userId;
     const data = snap.data() || {};
     const name = (data.name || data.alias || '').toString().slice(0, 100);
     const gender = ['masculino','femenino'].includes(data.gender) ? data.gender : null;
-    let userRole = data.userRole || 'regular';
+    const userRole = data.userRole || 'regular';
 
     console.log(`[onUserDocCreate] Setting claims for ${uid}: role=${userRole}, gender=${gender}`);
 
     // Display name en Auth
     try {
       await admin.auth().updateUser(uid, { displayName: name });
-      const user = await admin.auth().getUser(uid);
-      const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase());
-      if (isAdminEmail && userRole !== 'admin') {
-        userRole = 'admin';
-        const db = admin.firestore();
-        await db.collection('users').doc(uid).set({ userRole: 'admin', isAdmin: true }, { merge: true });
-      }
       console.log(`[onUserDocCreate] Updated displayName for ${uid}`);
     } catch (e) {
       console.error(`[onUserDocCreate] Error updating displayName:`, e);
@@ -319,33 +212,29 @@ exports.onUserDocCreateGen1 = f.firestore
 // ============================================================================
 // 2) CUSTOM CLAIMS UPDATE: Propagar cambios de role/gender a claims
 // ============================================================================
-exports.onUserDocUpdateGen1 = f.firestore
+exports.onUserDocUpdate = functions.firestore
   .document('users/{userId}')
   .onUpdate(async (change, ctx) => {
     const uid = ctx.params.userId;
     const before = change.before.data();
     const after = change.after.data();
 
-    let newRole = after.userRole || 'regular';
+    // Solo actualizar claims si role o gender cambiaron
+    const roleChanged = before.userRole !== after.userRole;
+    const genderChanged = before.gender !== after.gender;
+
+    if (!roleChanged && !genderChanged) {
+      console.log(`[onUserDocUpdate] No role/gender changes for ${uid}, skipping`);
+      return null;
+    }
+
+    const newRole = after.userRole || 'regular';
     const newGender = ['masculino','femenino'].includes(after.gender) ? after.gender : null;
+
+    console.log(`[onUserDocUpdate] Updating claims for ${uid}: role=${newRole}, gender=${newGender}`);
 
     try {
       const user = await admin.auth().getUser(uid);
-      const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase());
-      if (isAdminEmail && newRole !== 'admin') {
-        newRole = 'admin';
-        const db = admin.firestore();
-        await db.collection('users').doc(uid).set({ userRole: 'admin', isAdmin: true }, { merge: true });
-      }
-
-      const roleChanged = before.userRole !== newRole;
-      const genderChanged = before.gender !== newGender;
-
-      if (!roleChanged && !genderChanged) {
-        console.log(`[onUserDocUpdate] No effective role/gender changes for ${uid}, skipping`);
-        return null;
-      }
-
       const oldClaims = user.customClaims || {};
       await admin.auth().setCustomClaims(uid, {
         ...oldClaims,
@@ -363,7 +252,7 @@ exports.onUserDocUpdateGen1 = f.firestore
 // ============================================================================
 // 3) CHAT ACL: Sincroniza ACL de chats en Storage cuando cambian participantes
 // ============================================================================
-exports.syncChatACLGen1 = f.firestore
+exports.syncChatACL = functions.firestore
   .document('conversations/{conversationId}')
   .onWrite(async (change, ctx) => {
     const conversationId = ctx.params.conversationId;
@@ -407,7 +296,7 @@ exports.syncChatACLGen1 = f.firestore
 // ============================================================================
 // 4) ADMIN: Función HTTP para actualizar claims manualmente (útil para testing)
 // ============================================================================
-exports.updateUserClaims = f.https.onCall(async (data, context) => {
+exports.updateUserClaims = functions.https.onCall(async (data, context) => {
   // Solo admins pueden llamar esta función
   if (!context.auth || context.auth.token.role !== 'admin') {
     throw new functions.https.HttpsError(
@@ -452,7 +341,7 @@ exports.updateUserClaims = f.https.onCall(async (data, context) => {
 // ============================================================================
 // 5) UTILITY: Función HTTP para obtener claims de un usuario (debugging)
 // ============================================================================
-exports.getUserClaims = f.https.onCall(async (data, context) => {
+exports.getUserClaims = functions.https.onCall(async (data, context) => {
   // Solo usuarios autenticados pueden ver sus propios claims, admins pueden ver cualquiera
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -487,120 +376,9 @@ exports.getUserClaims = f.https.onCall(async (data, context) => {
 });
 
 // ============================================================================
-// 5b) UTILITY: Listar usuarios con membresía activa (solo admin)
-// ============================================================================
-exports.listActiveMembers = f.https.onCall(async (data, context) => {
-  if (!context.auth || context.auth.token.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden listar miembros activos');
-  }
-
-  try {
-    const db = admin.firestore();
-    const usersRef = db.collection('users');
-
-    const byFlagSnap = await usersRef.where('hasActiveSubscription', '==', true).get();
-    const byStatusSnap = await usersRef.where('subscriptionStatus', '==', 'active').get();
-
-    const map = new Map();
-    byFlagSnap.forEach(doc => map.set(doc.id, doc.data()));
-    byStatusSnap.forEach(doc => { if (!map.has(doc.id)) map.set(doc.id, doc.data()); });
-
-    const rows = [];
-    for (const [uid, data] of map.entries()) {
-      rows.push({
-        uid,
-        email: data.email || '',
-        alias: data.alias || '',
-        gender: data.gender || '',
-        hasActiveSubscription: !!data.hasActiveSubscription,
-        subscriptionStatus: data.subscriptionStatus || 'unknown'
-      });
-    }
-
-    rows.sort((a, b) => a.alias.localeCompare(b.alias));
-    return { count: rows.length, users: rows };
-  } catch (error) {
-    console.error('[listActiveMembers] Error:', error);
-    throw new functions.https.HttpsError('internal', 'Error listando miembros activos');
-  }
-});
-
-exports.setMembershipActive = f.https.onCall(async (data, context) => {
-  if (!context.auth || context.auth.token.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden actualizar membresías');
-  }
-
-  const { userId, email, subscriptionStatus, insurance } = data || {};
-  let targetUserId = userId || null;
-
-  try {
-    const db = admin.firestore();
-    if (!targetUserId && email) {
-      const user = await admin.auth().getUserByEmail(String(email));
-      targetUserId = user.uid;
-    }
-    if (!targetUserId) {
-      targetUserId = context.auth.uid;
-    }
-    const payload = {
-      hasActiveSubscription: true,
-      subscriptionStatus: subscriptionStatus || 'active'
-    };
-    if (typeof insurance === 'boolean') {
-      payload.hasAntiGhostingInsurance = insurance;
-    }
-    await db.collection('users').doc(String(targetUserId)).set(payload, { merge: true });
-    return { ok: true, userId: String(targetUserId), updated: payload };
-  } catch (error) {
-    console.error('[setMembershipActive] Error:', error);
-    throw new functions.https.HttpsError('internal', 'Error actualizando membresía');
-  }
-});
-
-exports.adminGenerateResetLink = f.https.onCall(async (data, context) => {
-  if (!context.auth || context.auth.token.role !== 'admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Solo admins pueden generar enlaces de restablecimiento');
-  }
-
-  const { alias, userId, email, continueUrl } = data || {};
-
-  try {
-    const db = admin.firestore();
-    let targetEmail = email || null;
-    let targetUid = userId || null;
-
-    if (!targetEmail) {
-      if (targetUid) {
-        const user = await admin.auth().getUser(String(targetUid));
-        targetEmail = user.email || null;
-      } else if (alias) {
-        const snap = await db.collection('users').where('alias', '==', alias).limit(1).get();
-        if (!snap.empty) {
-          const doc = snap.docs[0];
-          targetUid = doc.id;
-          targetEmail = doc.data().email || null;
-        }
-      }
-    }
-
-    if (!targetEmail) {
-      throw new functions.https.HttpsError('not-found', 'No se encontró email para alias/userId proporcionado');
-    }
-
-    const actionCodeSettings = continueUrl ? { url: continueUrl, handleCodeInApp: true } : undefined;
-    const link = await admin.auth().generatePasswordResetLink(targetEmail, actionCodeSettings);
-
-    return { ok: true, link, email: targetEmail, userId: targetUid };
-  } catch (error) {
-    console.error('[adminGenerateResetLink] Error:', error);
-    throw new functions.https.HttpsError('internal', 'Error generando enlace de restablecimiento');
-  }
-});
-
-// ============================================================================
 // 6) STRIPE WEBHOOK: Manejar eventos de Stripe (subscriptions y payments)
 // ============================================================================
-exports.stripeWebhook = f.https.onRequest(async (req, res) => {
+exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = functions.config().stripe?.webhook_secret || process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -616,18 +394,6 @@ exports.stripeWebhook = f.https.onRequest(async (req, res) => {
   console.log(`[stripeWebhook] Event received: ${event.type}`);
 
   try {
-    // Idempotencia: evitar reprocesar el mismo evento
-    const eventId = event.id;
-    if (eventId) {
-      const db = admin.firestore();
-      const eventLogRef = db.collection('webhook_events').doc(eventId);
-      const existing = await eventLogRef.get();
-      if (existing.exists) {
-        console.log(`[stripeWebhook] Event ${eventId} already processed, skipping`);
-        return res.json({ received: true, duplicate: true });
-      }
-    }
-
     switch (event.type) {
       // ========== SUBSCRIPTION EVENTS ==========
       case 'customer.subscription.created':
@@ -661,17 +427,6 @@ exports.stripeWebhook = f.https.onRequest(async (req, res) => {
         console.log(`[stripeWebhook] Unhandled event type: ${event.type}`);
     }
 
-    // Marcar el evento como procesado (idempotencia)
-    if (event?.id) {
-      const db = admin.firestore();
-      await db.collection('webhook_events').doc(event.id).set({
-        eventId: event.id,
-        provider: 'stripe',
-        type: event.type,
-        processedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    }
-
     res.json({ received: true });
   } catch (error) {
     console.error(`[stripeWebhook] Error processing event:`, error);
@@ -683,8 +438,7 @@ exports.stripeWebhook = f.https.onRequest(async (req, res) => {
  * Manejar actualización de suscripción (created/updated)
  */
 async function handleSubscriptionUpdate(subscription) {
-  const userId = subscription.metadata && subscription.metadata.userId;
-  console.log(`[handleSubscriptionUpdate] Incoming subscription id=${subscription?.id} metadata=${JSON.stringify(subscription?.metadata || {})}`);
+  const userId = subscription.metadata.userId;
 
   if (!userId) {
     console.error('[handleSubscriptionUpdate] No userId in subscription metadata');
@@ -703,28 +457,11 @@ async function handleSubscriptionUpdate(subscription) {
     cancelAtPeriodEnd: subscription.cancel_at_period_end
   };
 
-  console.log(`[handleSubscriptionUpdate] Will update membership for user ${userId} with status ${status}`);
   await updateUserMembership(userId, status, {
     subscriptionId: subscription.id,
     startDate: subscriptionData.currentPeriodStart,
     endDate: subscriptionData.currentPeriodEnd
   });
-
-  // Ensure Firestore user doc reflects subscription status (defensive duplication for tests)
-  try {
-    const db = admin.firestore();
-    console.log('[handleSubscriptionUpdate] Performing direct user doc update fallback');
-    await db
-      .collection('users')
-      .doc(userId)
-      .update({
-        hasActiveSubscription: status === 'active',
-        subscriptionStatus: status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-  } catch (e) {
-    console.error('[handleSubscriptionUpdate] Secondary update fallback failed:', e.message);
-  }
 
   await logSubscription(userId, subscriptionData);
 
@@ -909,11 +646,6 @@ async function handleInvoicePaymentSucceeded(invoice) {
  */
 async function verifyPayPalWebhookSignature(req) {
   try {
-    // Permitir bypass en entorno de tests
-    if (process.env.PAYPAL_SKIP_SIGNATURE_FOR_TESTS === '1') {
-      return true;
-    }
-
     // PayPal webhook headers
     const transmissionId = req.headers['paypal-transmission-id'];
     const transmissionTime = req.headers['paypal-transmission-time'];
@@ -1017,7 +749,7 @@ async function verifyPayPalWebhookSignature(req) {
 // ============================================================================
 // 7) PAYPAL WEBHOOK: Manejar eventos de PayPal (subscriptions y payments)
 // ============================================================================
-exports.paypalWebhook = f.https.onRequest(async (req, res) => {
+exports.paypalWebhook = functions.https.onRequest(async (req, res) => {
   const event = req.body;
 
   console.log(`[paypalWebhook] Event received: ${event.event_type}`);
@@ -1037,18 +769,6 @@ exports.paypalWebhook = f.https.onRequest(async (req, res) => {
     }
 
     console.log('[paypalWebhook] Webhook signature verified - processing event');
-
-    // Idempotencia: evitar reprocesar el mismo evento (PayPal usa id o event_id)
-    const eventId = event.id || event.event_id;
-    if (eventId) {
-      const db = admin.firestore();
-      const eventLogRef = db.collection('webhook_events').doc(eventId);
-      const existing = await eventLogRef.get();
-      if (existing.exists) {
-        console.log(`[paypalWebhook] Event ${eventId} already processed, skipping`);
-        return res.json({ received: true, duplicate: true });
-      }
-    }
 
     switch (event.event_type) {
       // ========== SUBSCRIPTION EVENTS ==========
@@ -1075,23 +795,8 @@ exports.paypalWebhook = f.https.onRequest(async (req, res) => {
         await handlePayPalPaymentFailed(event.resource);
         break;
 
-      case 'PAYMENT.AUTHORIZATION.VOIDED':
-        await handlePayPalAuthorizationVoided(event.resource);
-        break;
-
       default:
         console.log(`[paypalWebhook] Unhandled event type: ${event.event_type}`);
-    }
-
-    // Marcar el evento como procesado (idempotencia)
-    if (eventId) {
-      const db = admin.firestore();
-      await db.collection('webhook_events').doc(eventId).set({
-        eventId: eventId,
-        provider: 'paypal',
-        type: event.event_type,
-        processedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
     }
 
     res.json({ received: true });
@@ -1239,733 +944,410 @@ async function handlePayPalPaymentFailed(sale) {
   console.log(`[handlePayPalPaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
 
-// Export selected handlers only in test environment
-if (process.env.NODE_ENV === 'test') {
-  exports._testHandlers = {
-    handleSubscriptionUpdate,
-    handleSubscriptionCanceled,
-    handlePaymentSucceeded,
-    handlePaymentFailed,
-    handleInvoicePaymentFailed
-  };
-}
+// ============================================================================
+// PAYPAL AUTHORIZATION MANAGEMENT (Insurance Hold/Capture/Void)
+// ============================================================================
 
 /**
- * Manejar revocación/void de autorización (indicativo de token revocado)
+ * Helper: Obtener access token de PayPal
  */
-async function handlePayPalAuthorizationVoided(resource) {
-  const paymentToken = resource?.id;
-  const directUserId = resource?.custom;
+async function getPayPalAccessToken() {
+  const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+  const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
+  const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
 
-  const db = admin.firestore();
-
-  try {
-    if (directUserId) {
-      await db.collection('users').doc(directUserId).update({
-        hasAntiGhostingInsurance: false,
-        insurancePaymentToken: admin.firestore.FieldValue.delete(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      await createUserNotification(directUserId, {
-        title: 'Seguro desactivado',
-        message: 'Revocaste tu método de pago desde PayPal',
-        type: 'info'
-      });
-
-      console.log(`[handlePayPalAuthorizationVoided] Insurance disabled for user ${directUserId}`);
-      return;
-    }
-
-    if (!paymentToken) {
-      console.error('[handlePayPalAuthorizationVoided] Missing payment token id');
-      return;
-    }
-
-    const userQuery = await db.collection('users')
-      .where('insurancePaymentToken', '==', paymentToken)
-      .limit(1)
-      .get();
-
-    if (userQuery.empty) {
-      console.log('[handlePayPalAuthorizationVoided] No user found for token', paymentToken);
-      return;
-    }
-
-    const userId = userQuery.docs[0].id;
-
-    await db.collection('users').doc(userId).update({
-      hasAntiGhostingInsurance: false,
-      insurancePaymentToken: admin.firestore.FieldValue.delete(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    await createUserNotification(userId, {
-      title: 'Seguro desactivado',
-      message: 'Revocaste tu método de pago desde PayPal',
-      type: 'info'
-    });
-
-    console.log(`[handlePayPalAuthorizationVoided] Insurance disabled for user ${userId}`);
-  } catch (error) {
-    console.error('[handlePayPalAuthorizationVoided] Error handling voided authorization:', error);
+  if (!paypalClientId || !paypalSecret) {
+    throw new Error('PayPal credentials not configured');
   }
+
+  const authUrl = paypalMode === 'live'
+    ? 'https://api-m.paypal.com/v1/oauth2/token'
+    : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+
+  const auth = Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64');
+
+  const response = await axios.post(authUrl, 'grant_type=client_credentials', {
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  });
+
+  return response.data.access_token;
 }
 
-// ============================================================================
-// PAYPAL VAULT: Long-term payment retention for Anti-Ghosting Insurance
-// ============================================================================
-
 /**
- * Create Vault Setup Token for Insurance (saves payment method without charging)
- * Called from frontend when user purchases insurance
+ * Callable Function: Capturar autorización de seguro anti-plantón
+ * Se llama cuando un usuario planta a otro en una cita
  *
- * Flow:
- * 1. Frontend calls this function
- * 2. Backend creates setup token with PayPal API
- * 3. Frontend uses token to show PayPal UI
- * 4. User approves → PayPal returns payment token
- * 5. Frontend saves payment token in Firestore
+ * @param {object} data - { authorizationId: string, appointmentId: string, reason: string }
+ * @param {object} context - Firebase auth context
  */
-exports.createInsuranceVaultSetup = f.https.onCall(async (data, context) => {
-  // 1. Verify authentication
+exports.captureInsuranceAuthorization = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
-      'Must be authenticated to create vault setup'
+      'Must be authenticated to capture insurance authorization'
     );
   }
 
-  const userId = context.auth.uid;
-  console.log(`[createInsuranceVaultSetup] Creating vault setup for user ${userId}`);
+  const { authorizationId, appointmentId, victimUserId } = data;
 
-  try {
-    // 2. Get PayPal credentials
-    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
-    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
-    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
-
-    if (!paypalClientId || !paypalSecret) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'PayPal credentials not configured'
-      );
-    }
-
-    // 3. Get PayPal access token
-    const authUrl = paypalMode === 'live'
-      ? 'https://api-m.paypal.com/v1/oauth2/token'
-      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
-
-    const authResponse = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: 'grant_type=client_credentials'
-    });
-
-    if (!authResponse.ok) {
-      console.error('[createInsuranceVaultSetup] Failed to get access token:', authResponse.status);
-      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
-    }
-
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
-
-    // 4. Create Vault Setup Token
-    // Documentation: https://developer.paypal.com/docs/checkout/save-payment-methods/purchase-later/js-sdk/paypal/
-    const setupUrl = paypalMode === 'live'
-      ? 'https://api-m.paypal.com/v3/vault/setup-tokens'
-      : 'https://api-m.sandbox.paypal.com/v3/vault/setup-tokens';
-
-    const setupPayload = {
-      payment_source: {
-        paypal: {
-          description: 'Seguro Anti-Plantón TuCitaSegura - Retención de €120',
-          usage_type: 'MERCHANT',
-          customer_type: 'CONSUMER',
-          permit_multiple_payment_tokens: false
-        }
-      }
-    };
-
-    const setupResponse = await fetch(setupUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'PayPal-Request-Id': `insurance-vault-${userId}-${Date.now()}` // Idempotency key
-      },
-      body: JSON.stringify(setupPayload)
-    });
-
-    if (!setupResponse.ok) {
-      const errorText = await setupResponse.text();
-      console.error('[createInsuranceVaultSetup] Failed to create setup token:', setupResponse.status, errorText);
-      throw new functions.https.HttpsError('internal', 'Failed to create vault setup token');
-    }
-
-    const setupData = await setupResponse.json();
-
-    console.log(`[createInsuranceVaultSetup] Setup token created: ${setupData.id}`);
-
-    return {
-      success: true,
-      setupToken: setupData.id,
-      approveUrl: setupData.links?.find(link => link.rel === 'approve')?.href
-    };
-
-  } catch (error) {
-    console.error('[createInsuranceVaultSetup] Error:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError('internal', 'Failed to create vault setup');
-  }
-});
-
-/**
- * Charge €120 from saved payment method when user ghosts a date
- * Called by admin when investigating a no-show incident
- *
- * @param {Object} data - { userId: string, appointmentId: string, reason: string }
- */
-exports.chargeInsuranceFromVault = f.https.onCall(async (data, context) => {
-  // 1. Verify admin authorization
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
-  }
-
-  const adminToken = context.auth.token;
-  if (adminToken.role !== 'admin') {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Only admins can charge insurance'
-    );
-  }
-
-  const { userId, appointmentId, reason } = data;
-
-  if (!userId || !appointmentId) {
+  if (!authorizationId || !appointmentId || !victimUserId) {
     throw new functions.https.HttpsError(
       'invalid-argument',
-      'userId and appointmentId are required'
+      'authorizationId, appointmentId, and victimUserId are required'
     );
   }
 
-  console.log(`[chargeInsuranceFromVault] Charging insurance for user ${userId}, appointment ${appointmentId}`);
-
   try {
-    // 2. Get user's payment token from Firestore
+    console.log(`[captureInsuranceAuthorization] Starting capture for authorization ${authorizationId}`);
+
     const db = admin.firestore();
-    const userRef = db.collection('users').doc(userId);
-    const userSnap = await userRef.get();
 
-    if (!userSnap.exists) {
-      throw new functions.https.HttpsError('not-found', 'User not found');
+    // 2. Verificar que la cita existe y el usuario es parte de ella
+    const appointmentDoc = await db.collection('appointments').doc(appointmentId).get();
+    if (!appointmentDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Appointment not found');
     }
 
-    const userData = userSnap.data();
-    const paymentToken = userData.insurancePaymentToken;
+    const appointment = appointmentDoc.data();
+    const participants = appointment.participants || [];
 
-    if (!paymentToken) {
+    // Verificar que victimUserId es parte de la cita
+    if (!participants.includes(victimUserId)) {
       throw new functions.https.HttpsError(
-        'failed-precondition',
-        'User does not have saved payment method'
+        'permission-denied',
+        'Victim user is not part of this appointment'
       );
     }
 
-    // 3. Get PayPal credentials
+    // 3. Obtener access token de PayPal
+    const accessToken = await getPayPalAccessToken();
+
+    // 4. Capturar la autorización
     const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
-    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
-    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
+    const captureUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}/capture`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}/capture`;
 
-    if (!paypalClientId || !paypalSecret) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'PayPal credentials not configured'
-      );
-    }
-
-    // 4. Get PayPal access token
-    const authUrl = paypalMode === 'live'
-      ? 'https://api-m.paypal.com/v1/oauth2/token'
-      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
-
-    const authResponse = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded'
+    const captureResponse = await axios.post(
+      captureUrl,
+      {
+        final_capture: true, // Esta es la captura final
+        note_to_payer: 'Compensación por plantón en TuCitaSegura',
+        soft_descriptor: 'TCS-PLANTON'
       },
-      body: 'grant_type=client_credentials'
-    });
-
-    if (!authResponse.ok) {
-      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
-    }
-
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
-
-    // 5. Create payment using saved payment token
-    // Documentation: https://developer.paypal.com/docs/checkout/save-payment-methods/during-purchase/
-    const ordersUrl = paypalMode === 'live'
-      ? 'https://api-m.paypal.com/v2/checkout/orders'
-      : 'https://api-m.sandbox.paypal.com/v2/checkout/orders';
-
-    const orderPayload = {
-      intent: 'CAPTURE',
-      purchase_units: [{
-        description: `Seguro Anti-Plantón - Plantón en cita ${appointmentId}`,
-        amount: {
-          currency_code: 'EUR',
-          value: '120.00'
-        },
-        custom_id: userId,
-        invoice_id: `insurance-charge-${appointmentId}-${Date.now()}`
-      }],
-      payment_source: {
-        token: {
-          id: paymentToken,
-          type: 'PAYMENT_METHOD_TOKEN'
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
         }
       }
-    };
+    );
 
-    const orderResponse = await fetch(ordersUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'PayPal-Request-Id': `insurance-capture-${appointmentId}-${Date.now()}`
-      },
-      body: JSON.stringify(orderPayload)
+    const captureData = captureResponse.data;
+    console.log(`[captureInsuranceAuthorization] Capture successful:`, captureData.id);
+
+    // 5. Obtener el usuario que plantó (quien tiene la autorización)
+    const ghosterId = participants.find(uid => uid !== victimUserId);
+
+    // 6. Actualizar Firestore - Usuario que plantó
+    await db.collection('users').doc(ghosterId).update({
+      insuranceStatus: 'captured',
+      insuranceCaptureId: captureData.id,
+      insuranceCaptureDate: admin.firestore.FieldValue.serverTimestamp(),
+      insuranceCaptureReason: 'no_show',
+      insuranceCaptureAppointmentId: appointmentId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    if (!orderResponse.ok) {
-      const errorText = await orderResponse.text();
-      console.error('[chargeInsuranceFromVault] Failed to create order:', orderResponse.status, errorText);
-      throw new functions.https.HttpsError('internal', 'Failed to charge payment method');
-    }
-
-    const orderData = await orderResponse.json();
-
-    console.log(`[chargeInsuranceFromVault] Order created: ${orderData.id}, status: ${orderData.status}`);
-
-    // 6. Log the charge in Firestore
-    const chargeData = {
-      userId: userId,
+    // 7. Registrar la captura en colección de insurance_captures
+    await db.collection('insurance_captures').add({
+      ghosterId: ghosterId,
+      victimId: victimUserId,
       appointmentId: appointmentId,
-      orderId: orderData.id,
+      authorizationId: authorizationId,
+      captureId: captureData.id,
       amount: 120,
       currency: 'EUR',
-      status: orderData.status,
-      reason: reason || 'No-show at appointment',
-      chargedBy: context.auth.uid,
-      chargedAt: admin.firestore.FieldValue.serverTimestamp(),
-      paymentToken: paymentToken
-    };
+      status: captureData.status,
+      reason: 'no_show',
+      capturedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paypalResponse: captureData
+    });
 
-    await db.collection('insurance_charges').add(chargeData);
+    // 8. Actualizar el appointment con la información de captura
+    await db.collection('appointments').doc(appointmentId).update({
+      insuranceCaptured: true,
+      insuranceCaptureId: captureData.id,
+      ghosterId: ghosterId,
+      victimId: victimUserId,
+      capturedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
-    // 7. Notify user
-    await createUserNotification(userId, {
-      title: 'Cargo de Seguro Anti-Plantón',
-      message: `Se ha cobrado €120 de tu seguro anti-plantón por no asistir a la cita ${appointmentId}. Razón: ${reason || 'No-show'}`,
+    // 9. Notificar a ambos usuarios
+    await createUserNotification(ghosterId, {
+      title: 'Cargo por plantón',
+      message: 'Se han cobrado €120 de tu retención por no asistir a la cita confirmada. Tu reputación ha sido afectada.',
       type: 'warning',
       actionUrl: `/webapp/cita-detalle.html?id=${appointmentId}`,
       actionLabel: 'Ver detalles',
       metadata: {
-        orderId: orderData.id,
-        appointmentId: appointmentId
+        appointmentId,
+        captureId: captureData.id
       }
     });
 
-    console.log(`[chargeInsuranceFromVault] Charge completed successfully for user ${userId}`);
+    await createUserNotification(victimUserId, {
+      title: 'Compensación recibida',
+      message: 'Tu cita no se presentó. Se ha procesado la compensación de €120 por el plantón.',
+      type: 'success',
+      actionUrl: `/webapp/cita-detalle.html?id=${appointmentId}`,
+      actionLabel: 'Ver detalles',
+      metadata: {
+        appointmentId,
+        captureId: captureData.id
+      }
+    });
+
+    console.log(`[captureInsuranceAuthorization] Completed successfully for appointment ${appointmentId}`);
 
     return {
       success: true,
-      orderId: orderData.id,
-      status: orderData.status,
+      captureId: captureData.id,
+      status: captureData.status,
       amount: 120,
       currency: 'EUR'
     };
 
   } catch (error) {
-    console.error('[chargeInsuranceFromVault] Error:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError('internal', 'Failed to charge insurance');
+    console.error(`[captureInsuranceAuthorization] Error:`, error.response?.data || error.message);
+
+    // Log del error
+    const db = admin.firestore();
+    await db.collection('payment_errors').add({
+      type: 'insurance_capture',
+      authorizationId,
+      appointmentId,
+      error: error.response?.data || error.message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to capture insurance authorization: ${error.response?.data?.message || error.message}`
+    );
   }
 });
 
 /**
- * Delete saved payment method (when user cancels account)
- * Called when user deletes their account
+ * Callable Function: Liberar (void) autorización de seguro anti-plantón
+ * Se llama cuando ambos usuarios llegan a la cita, o cuando se cancela la cuenta
  *
- * @param {Object} data - { userId: string }
+ * @param {object} data - { authorizationId: string, reason: 'successful_date' | 'account_cancelled' }
+ * @param {object} context - Firebase auth context
  */
-exports.deleteInsuranceVault = f.https.onCall(async (data, context) => {
-  // 1. Verify authentication
+exports.voidInsuranceAuthorization = functions.https.onCall(async (data, context) => {
+  // 1. Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to void insurance authorization'
+    );
+  }
+
+  const { authorizationId, userId, reason } = data;
+
+  if (!authorizationId || !userId || !reason) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'authorizationId, userId, and reason are required'
+    );
+  }
+
+  // Validar que el reason es correcto
+  const validReasons = ['successful_date', 'account_cancelled', 'mutual_cancellation'];
+  if (!validReasons.includes(reason)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `reason must be one of: ${validReasons.join(', ')}`
+    );
+  }
+
+  try {
+    console.log(`[voidInsuranceAuthorization] Starting void for authorization ${authorizationId}, reason: ${reason}`);
+
+    const db = admin.firestore();
+
+    // 2. Verificar que el usuario existe y tiene esta autorización
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+
+    const userData = userDoc.data();
+    if (userData.insuranceAuthorizationId !== authorizationId) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Authorization ID does not match user record'
+      );
+    }
+
+    // 3. Obtener access token de PayPal
+    const accessToken = await getPayPalAccessToken();
+
+    // 4. Anular (void) la autorización
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const voidUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}/void`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}/void`;
+
+    const voidResponse = await axios.post(
+      voidUrl,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    console.log(`[voidInsuranceAuthorization] Void successful for authorization ${authorizationId}`);
+
+    // 5. Actualizar Firestore
+    await db.collection('users').doc(userId).update({
+      insuranceStatus: 'voided',
+      insuranceVoidDate: admin.firestore.FieldValue.serverTimestamp(),
+      insuranceVoidReason: reason,
+      hasAntiGhostingInsurance: false, // Ya no tiene seguro activo
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 6. Registrar el void en colección
+    await db.collection('insurance_voids').add({
+      userId: userId,
+      authorizationId: authorizationId,
+      reason: reason,
+      voidedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 7. Notificar al usuario
+    let notificationMessage = '';
+    if (reason === 'successful_date') {
+      notificationMessage = 'Tu cita fue exitosa. La retención de €120 permanece activa para futuras citas.';
+    } else if (reason === 'account_cancelled') {
+      notificationMessage = 'Tu cuenta ha sido cancelada y la retención de €120 ha sido liberada.';
+    } else if (reason === 'mutual_cancellation') {
+      notificationMessage = 'La cita fue cancelada de mutuo acuerdo. La retención permanece activa.';
+    }
+
+    await createUserNotification(userId, {
+      title: 'Retención de seguro actualizada',
+      message: notificationMessage,
+      type: 'info',
+      actionUrl: '/webapp/cuenta-pagos.html',
+      actionLabel: 'Ver estado de pago',
+      metadata: {
+        reason,
+        authorizationId
+      }
+    });
+
+    console.log(`[voidInsuranceAuthorization] Completed successfully for user ${userId}`);
+
+    return {
+      success: true,
+      status: 'voided',
+      reason: reason
+    };
+
+  } catch (error) {
+    console.error(`[voidInsuranceAuthorization] Error:`, error.response?.data || error.message);
+
+    // Si el error es que la autorización ya expiró (esto es normal después de 29 días)
+    if (error.response?.status === 422 || error.response?.data?.name === 'AUTHORIZATION_VOIDED') {
+      console.log(`[voidInsuranceAuthorization] Authorization already voided or expired - updating user record`);
+
+      const db = admin.firestore();
+      await db.collection('users').doc(userId).update({
+        insuranceStatus: 'expired',
+        insuranceVoidDate: admin.firestore.FieldValue.serverTimestamp(),
+        insuranceVoidReason: 'auto_expired',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return {
+        success: true,
+        status: 'expired',
+        message: 'Authorization already voided or expired'
+      };
+    }
+
+    // Log del error
+    const db = admin.firestore();
+    await db.collection('payment_errors').add({
+      type: 'insurance_void',
+      authorizationId,
+      userId,
+      error: error.response?.data || error.message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to void insurance authorization: ${error.response?.data?.message || error.message}`
+    );
+  }
+});
+
+/**
+ * Callable Function: Obtener estado de autorización desde PayPal
+ * Útil para verificar si la autorización sigue activa
+ */
+exports.getInsuranceAuthorizationStatus = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
   }
 
-  const { userId } = data;
-  const requesterId = context.auth.uid;
+  const { authorizationId } = data;
 
-  // Only allow user to delete their own vault, or admin
-  if (userId !== requesterId && context.auth.token.role !== 'admin') {
+  if (!authorizationId) {
+    throw new functions.https.HttpsError('invalid-argument', 'authorizationId is required');
+  }
+
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const getUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v2/payments/authorizations/${authorizationId}`
+      : `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${authorizationId}`;
+
+    const response = await axios.get(getUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    return {
+      success: true,
+      status: response.data.status,
+      amount: response.data.amount,
+      createTime: response.data.create_time,
+      expirationTime: response.data.expiration_time
+    };
+
+  } catch (error) {
+    console.error(`[getInsuranceAuthorizationStatus] Error:`, error.response?.data || error.message);
     throw new functions.https.HttpsError(
-      'permission-denied',
-      'Can only delete your own payment method'
+      'internal',
+      `Failed to get authorization status: ${error.response?.data?.message || error.message}`
     );
   }
-
-  console.log(`[deleteInsuranceVault] Deleting vault for user ${userId}`);
-
-  try {
-    // 2. Get user's payment token
-    const db = admin.firestore();
-    const userRef = db.collection('users').doc(userId);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      throw new functions.https.HttpsError('not-found', 'User not found');
-    }
-
-    const userData = userSnap.data();
-    const paymentToken = userData.insurancePaymentToken;
-
-    if (!paymentToken) {
-      console.log(`[deleteInsuranceVault] No payment token found for user ${userId}`);
-      return { success: true, message: 'No payment method to delete' };
-    }
-
-    // 3. Get PayPal credentials
-    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
-    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
-    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
-
-    if (!paypalClientId || !paypalSecret) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'PayPal credentials not configured'
-      );
-    }
-
-    // 4. Get PayPal access token
-    const authUrl = paypalMode === 'live'
-      ? 'https://api-m.paypal.com/v1/oauth2/token'
-      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
-
-    const authResponse = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: 'grant_type=client_credentials'
-    });
-
-    if (!authResponse.ok) {
-      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
-    }
-
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
-
-    // 5. Delete payment token
-    // Documentation: https://developer.paypal.com/docs/api/payment-tokens/v3/#payment-tokens_delete
-    const deleteUrl = paypalMode === 'live'
-      ? `https://api-m.paypal.com/v3/vault/payment-tokens/${paymentToken}`
-      : `https://api-m.sandbox.paypal.com/v3/vault/payment-tokens/${paymentToken}`;
-
-    const deleteResponse = await fetch(deleteUrl, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    // 204 No Content = success
-    if (!deleteResponse.ok && deleteResponse.status !== 204) {
-      const errorText = await deleteResponse.text();
-      console.error('[deleteInsuranceVault] Failed to delete token:', deleteResponse.status, errorText);
-      // Don't throw - still remove from Firestore
-    }
-
-    // 6. Remove from Firestore
-    await userRef.update({
-      insurancePaymentToken: admin.firestore.FieldValue.delete(),
-      hasAntiGhostingInsurance: false,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    console.log(`[deleteInsuranceVault] Payment method deleted for user ${userId}`);
-
-    return {
-      success: true,
-      message: 'Payment method deleted successfully'
-    };
-
-  } catch (error) {
-    console.error('[deleteInsuranceVault] Error:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError('internal', 'Failed to delete payment method');
-  }
 });
-
-// ============================================================================
-// STRIPE SUBSCRIPTION CALLABLES
-// ============================================================================
-
-/**
- * Crear suscripción Stripe para un usuario
- * Se usa desde el frontend para iniciar el flujo de suscripción
- */
-exports.createStripeSubscription = f.https.onCall(async (data, context) => {
-  // Verificar autenticación
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const userId = context.auth.uid;
-  const { priceId, paymentMethodId } = data;
-
-  if (!priceId) {
-    throw new functions.https.HttpsError('invalid-argument', 'priceId is required');
-  }
-
-  try {
-    console.log(`[createStripeSubscription] Creating subscription for user ${userId} with price ${priceId}`);
-
-    // Obtener o crear customer de Stripe
-    const db = admin.firestore();
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-
-    let customerId = userData?.stripeCustomerId;
-
-    if (!customerId) {
-      // Crear nuevo customer
-      const customer = await stripe.customers.create({
-        email: userData?.email || context.auth.token.email,
-        metadata: {
-          userId: userId,
-          firebaseUID: userId
-        }
-      });
-      customerId = customer.id;
-
-      // Guardar customer ID en Firestore
-      await db.collection('users').doc(userId).update({
-        stripeCustomerId: customerId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-
-    // Si se proporcionó un método de pago, adjuntarlo al customer
-    if (paymentMethodId) {
-      await stripe.paymentMethods.attach(paymentMethodId, {
-        customer: customerId,
-      });
-
-      // Establecer como método de pago predeterminado
-      await stripe.customers.update(customerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
-      });
-    }
-
-    // Crear la suscripción
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      metadata: {
-        userId: userId,
-        firebaseUID: userId
-      },
-      expand: ['latest_invoice.payment_intent'],
-    });
-
-    console.log(`[createStripeSubscription] Subscription created: ${subscription.id}`);
-
-    return {
-      success: true,
-      subscriptionId: subscription.id,
-      clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
-      status: subscription.status
-    };
-
-  } catch (error) {
-    console.error('[createStripeSubscription] Error:', error);
-    
-    if (error.type === 'StripeCardError') {
-      throw new functions.https.HttpsError('failed-precondition', error.message);
-    } else if (error.type === 'StripeInvalidRequestError') {
-      throw new functions.https.HttpsError('invalid-argument', error.message);
-    }
-    
-    throw new functions.https.HttpsError('internal', 'Failed to create subscription');
-  }
-});
-
-/**
- * Actualizar método de pago de una suscripción Stripe
- */
-exports.updateStripePaymentMethod = f.https.onCall(async (data, context) => {
-  // Verificar autenticación
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const userId = context.auth.uid;
-  const { paymentMethodId } = data;
-
-  if (!paymentMethodId) {
-    throw new functions.https.HttpsError('invalid-argument', 'paymentMethodId is required');
-  }
-
-  try {
-    console.log(`[updateStripePaymentMethod] Updating payment method for user ${userId}`);
-
-    const db = admin.firestore();
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-
-    if (!userData?.stripeCustomerId) {
-      throw new functions.https.HttpsError('failed-precondition', 'No Stripe customer found for user');
-    }
-
-    const customerId = userData.stripeCustomerId;
-
-    // Adjuntar el nuevo método de pago al customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
-      customer: customerId,
-    });
-
-    // Actualizar el método de pago predeterminado
-    await stripe.customers.update(customerId, {
-      invoice_settings: {
-        default_payment_method: paymentMethodId,
-      },
-    });
-
-    // Si el usuario tiene una suscripción activa, actualizarla también
-    if (userData.subscriptionId) {
-      await stripe.subscriptions.update(userData.subscriptionId, {
-        default_payment_method: paymentMethodId,
-      });
-    }
-
-    console.log(`[updateStripePaymentMethod] Payment method updated for customer ${customerId}`);
-
-    return {
-      success: true,
-      message: 'Payment method updated successfully'
-    };
-
-  } catch (error) {
-    console.error('[updateStripePaymentMethod] Error:', error);
-    
-    if (error.type === 'StripeCardError') {
-      throw new functions.https.HttpsError('failed-precondition', error.message);
-    } else if (error.type === 'StripeInvalidRequestError') {
-      throw new functions.https.HttpsError('invalid-argument', error.message);
-    }
-    
-    throw new functions.https.HttpsError('internal', 'Failed to update payment method');
-  }
-});
-
-/**
- * Cancelar suscripción Stripe de un usuario
- */
-exports.cancelStripeSubscription = f.https.onCall(async (data, context) => {
-  // Verificar autenticación
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const userId = context.auth.uid;
-
-  try {
-    console.log(`[cancelStripeSubscription] Canceling subscription for user ${userId}`);
-
-    const db = admin.firestore();
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-
-    if (!userData?.subscriptionId) {
-      throw new functions.https.HttpsError('failed-precondition', 'No active subscription found');
-    }
-
-    // Cancelar la suscripción al final del período actual
-    const subscription = await stripe.subscriptions.update(userData.subscriptionId, {
-      cancel_at_period_end: true,
-    });
-
-    console.log(`[cancelStripeSubscription] Subscription ${subscription.id} scheduled for cancellation`);
-
-    return {
-      success: true,
-      message: 'Subscription scheduled for cancellation at period end',
-      cancelAt: subscription.cancel_at
-    };
-
-  } catch (error) {
-    console.error('[cancelStripeSubscription] Error:', error);
-    
-    if (error.type === 'StripeInvalidRequestError') {
-      throw new functions.https.HttpsError('invalid-argument', error.message);
-    }
-    
-    throw new functions.https.HttpsError('internal', 'Failed to cancel subscription');
-  }
-});
-
-// ============================================================================
-// LIMPIEZA PROGRAMADA: borrar eventos antiguos en `webhook_events`
-// ============================================================================
-// El repositorio de idempotencia guarda `processedAt` como timestamp.
-// Esta función programada elimina documentos con `processedAt` anteriores a 30 días.
-exports.cleanupWebhookEvents = f.pubsub
-  .schedule('every 24 hours')
-  .timeZone('UTC')
-  .onRun(async () => {
-    const db = admin.firestore();
-    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-    const cutoff = admin.firestore.Timestamp.fromDate(new Date(Date.now() - THIRTY_DAYS_MS));
-
-    try {
-      const snap = await db.collection('webhook_events')
-        .where('processedAt', '<', cutoff)
-        .limit(500)
-        .get();
-
-      if (snap.empty) {
-        console.log('[cleanupWebhookEvents] No old webhook events to delete');
-        return null;
-      }
-
-      const batch = db.batch();
-      snap.forEach((doc) => batch.delete(doc.ref));
-      await batch.commit();
-      console.log(`[cleanupWebhookEvents] Deleted ${snap.size} old webhook events`);
-    } catch (err) {
-      console.error('[cleanupWebhookEvents] Error cleaning webhook events:', err);
-    }
-    return null;
-  });
 
 // ============================================================================
 // PUSH NOTIFICATIONS

@@ -4,18 +4,18 @@
   "github": {
     "silent": true
   },
-
+  "functions": {},
   "rewrites": [
     {"source": "/webapp/register.html", "destination": "/webapp/register.html"},
     {"source": "/webapp/login.html", "destination": "/webapp/login.html"},
-    {"source": "/webapp/(.*)\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$", "destination": "/webapp/$1.$2"},
+    {"source": "/webapp/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))", "destination": "/webapp/$1"},
     {"source": "/webapp/(.*)", "destination": "/webapp/$1"},
-    {"source": "/(.*)\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$", "destination": "/$1.$2"},
+    {"source": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))", "destination": "/$1"},
     {"source": "/(.*)", "destination": "/index.html"}
   ],
   "headers": [
     {
-      "source": "/webapp/(.*)\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$",
+      "source": "/webapp/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -24,7 +24,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$",
+      "source": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
       "headers": [
         {
           "key": "Cache-Control",
@@ -33,7 +33,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.html$",
+      "source": "/(.*\\.html)",
       "headers": [
         {
           "key": "Cache-Control",
