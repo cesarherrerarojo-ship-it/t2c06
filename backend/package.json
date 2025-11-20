@@ -1,12 +1,12 @@
 {
-  "name": "tucitasseguras-backend",
+  "name": "tuscitasseguras-backend",
   "version": "1.0.0",
-  "description": "Backend Python FastAPI - Railway deployment helper",
-  "main": "app/main.py",
-  "scripts": {
-    "start": "echo 'This is a Python FastAPI project, not Node.js' && exit 1"
-  },
+  "description": "Backend de TuCitaSegura - FastAPI Python",
+  "private": true,
   "engines": {
-    "node": ">=999.999.999"
+    "node": "false"
+  },
+  "scripts": {
+    "start": "echo 'This is a Python backend, not Node.js' && exit 1"
   }
 }

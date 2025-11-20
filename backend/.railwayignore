@@ -1,11 +1,17 @@
-# Excluir archivos de Node.js para evitar detección
+# Excluir archivos de Node.js para evitar detección incorrecta
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+npm-debug.log
+yarn-error.log
 package-lock.json
 yarn.lock
-.nuxt
-dist
-build
-*.log
+.nvmrc
+.nyc_output
+coverage/
+
+# Excluir otros archivos no necesarios
+.git
+.gitignore
+README.md
+.env.local
+.env.development
+.env.test
