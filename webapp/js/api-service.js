@@ -12,6 +12,8 @@ export class APIService {
     const useSameOrigin = !isLocal && !override;
     this.useSameOrigin = useSameOrigin;
     this.baseURL = override ? override : (isLocal ? 'http://localhost:8001' : '');
+    this.fallbackBaseURL = 'https://tuscitasseguras-2d1a6.web.app';
+    
     this.token = null;
     this.headers = {
       'Content-Type': 'application/json',
@@ -45,16 +47,13 @@ export class APIService {
     if (!this.baseURL && !this.useSameOrigin) {
       throw new Error('Backend disabled in production');
     }
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      method: 'GET',
-      headers: this.headers,
-      ...options,
-      headers: {
-        ...this.headers,
-        ...options.headers,
-      }
-    };
+    const url = this.useSameOrigin ? endpoint : `${this.baseURL}${endpoint}`;
+    const method = (options.method ? String(options.method) : 'GET').toUpperCase();
+    const mergedHeaders = { ...this.headers, ...(options.headers || {}) };
+    if (method === 'GET') {
+      delete mergedHeaders['Content-Type'];
+    }
+    const config = { ...options, method, headers: mergedHeaders };
 
     try {
       const response = await fetch(url, config);
@@ -81,6 +80,34 @@ export class APIService {
     } catch (error) {
       const ep = endpoint || '';
       const isNoise = ep === '/health' || ep.includes('/auth/status');
+      
+      // Manejar específicamente errores de CORS y conexión
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        if (this.useSameOrigin && this.fallbackBaseURL) {
+          try {
+            const fallbackUrl = `${this.fallbackBaseURL}${endpoint}`;
+            const resp = await fetch(fallbackUrl, { ...config });
+            if (!resp.ok) {
+              let detail = `HTTP ${resp.status}`;
+              try {
+                const json = await resp.json();
+                detail = json.detail || detail;
+              } catch {}
+              throw new Error(detail);
+            }
+            try {
+              return await resp.json();
+            } catch {
+              return {};
+            }
+          } catch (fallbackErr) {
+            console.warn(`Fallback request failed: ${ep}`, String(fallbackErr.message || fallbackErr));
+          }
+        }
+        console.warn(`CORS/Network error - backend not reachable: ${ep}`, error.message);
+        throw new Error('Backend connection failed - CORS or network issue');
+      }
+      
       if (isNoise) {
         console.warn(`API warning: ${ep}`, error.message || error);
       } else {
