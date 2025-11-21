@@ -6,6 +6,28 @@ const axios = require('axios');
 
 admin.initializeApp();
 
+exports.apiProxy = functions.https.onRequest(async (req, res) => {
+  const base = (functions.config()?.api?.base_url) || process.env.API_BASE_URL || 'https://t2c06-production.up.railway.app';
+  const url = base + req.originalUrl;
+  try {
+    const headers = { ...req.headers };
+    delete headers.host;
+    const response = await axios({
+      url,
+      method: req.method,
+      headers,
+      data: req.body,
+      validateStatus: () => true
+    });
+    Object.entries(response.headers || {}).forEach(([k, v]) => {
+      if (typeof v === 'string') res.setHeader(k, v);
+    });
+    res.status(response.status).send(response.data);
+  } catch (error) {
+    res.status(502).json({ error: 'proxy_error', detail: String(error.message || error) });
+  }
+});
+
 // ============================================================================
 // HELPER FUNCTIONS: Payment management
 // ============================================================================
